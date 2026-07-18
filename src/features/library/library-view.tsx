@@ -7,7 +7,6 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BookCard } from "./book-card";
 import { BookRow } from "./book-row";
-import { LibrarySidebar } from "./library-sidebar";
 import { useLibraryStore } from "@/stores/library-store";
 import { useReaderStore } from "@/stores/reader-store";
 import { useUiStore } from "@/stores/ui-store";
@@ -170,9 +169,12 @@ export function LibraryView() {
   const handleImport = () => fileInputRef.current?.click();
 
   const handleFilesPicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    e.target.value = ""; // allow re-picking the same file
-    if (!files?.length) return;
+    // Snapshot the picked files BEFORE clearing the input: `e.target.files` is a
+    // live FileList, so resetting `value` (to allow re-picking the same file)
+    // would empty it and leave nothing to import.
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    e.target.value = "";
+    if (!files.length) return;
     try {
       reportImport(await importFiles(files));
     } catch {
@@ -252,8 +254,6 @@ export function LibraryView() {
           <p className="text-sm font-medium">Drop EPUB files to import</p>
         </div>
       )}
-
-      {books.length > 0 && <LibrarySidebar />}
 
       <div className="flex min-w-0 flex-1 flex-col">
         {books.length > 0 && (

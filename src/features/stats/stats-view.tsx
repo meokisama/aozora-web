@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, BarChart3, BookCheck, CalendarDays, Clock, Flame, Gauge, Loader2, Type } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { BarChart3, BookCheck, CalendarDays, Clock, Flame, Gauge, Loader2, Type } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLibraryStore } from "@/stores/library-store";
-import { useUiStore } from "@/stores/ui-store";
 import { useStatsPrefs } from "@/stores/stats-prefs-store";
 import { getStats } from "@/platform/stats";
 import { toDayKey, shiftDay, computeStreaks, formatDuration, formatCompact } from "@/lib/stats/aggregate";
@@ -23,7 +21,6 @@ import { Milestones } from "./milestones";
  */
 export function StatsView() {
   const books = useLibraryStore((s) => s.books);
-  const setView = useUiStore((s) => s.setView);
   const dailyGoal = useStatsPrefs((s) => s.dailyGoal);
   const setDailyGoal = useStatsPrefs((s) => s.setDailyGoal);
   const [data, setData] = useState<Stats | null>(null);
@@ -133,15 +130,6 @@ export function StatsView() {
 
   return (
     <div className="flex h-full min-w-0 flex-col">
-      {/* Header: back to the library. */}
-      <div className="flex min-h-11 shrink-0 items-center gap-2 border-b border-border px-3">
-        <Button variant="ghost" size="sm" onClick={() => setView("library")}>
-          <ArrowLeft />
-          Back to library
-        </Button>
-        <h1 className="ml-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Statistics</h1>
-      </div>
-
       {loading ? (
         <div className="flex flex-1 items-center justify-center">
           <Loader2 className="size-5 animate-spin text-muted-foreground" />
@@ -255,12 +243,7 @@ export function StatsView() {
             </Card>
           </section>
 
-          <Milestones
-            totalChars={overview.totalChars}
-            activeDays={overview.activeDays}
-            bestStreak={streaks.longest}
-            booksFinished={booksFinished}
-          />
+          <Milestones totalChars={overview.totalChars} activeDays={overview.activeDays} bestStreak={streaks.longest} booksFinished={booksFinished} />
 
           {/* Most-read books, ranked by time read. */}
           {topBooks.length > 0 && (

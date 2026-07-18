@@ -14,6 +14,7 @@
  */
 
 import { extractEpubMetadata } from "@/lib/epub/metadata";
+import { resizeCoverToDataUrl } from "@/lib/epub/resize-cover";
 import { deleteCachedBook } from "@/lib/reader-cache";
 import { idbGetAll, idbGetRecord, idbPutRecord, idbDelete, idbGet, idbPut, STORE_BOOKS, STORE_BOOKBLOBS } from "./db";
 import type { Book, BookSource, ProgressUpdate, UpdateBookPayload } from "@/lib/types";
@@ -21,14 +22,12 @@ import type { Book, BookSource, ProgressUpdate, UpdateBookPayload } from "@/lib/
 /** The host book id for a `?book=` name — the same key progress used pre-library. */
 export const hostBookId = (book: string): string => `embed:${book}`;
 
-/** Encodes a cover image (bytes + mime) as a data: URL for inline storage/render. */
-function coverDataUrl(bytes: ArrayBuffer | undefined, mime: string | undefined | null): string | null {
-  if (!bytes) return null;
-  let binary = "";
-  const chunk = 0x8000;
-  const arr = new Uint8Array(bytes);
-  for (let i = 0; i < arr.length; i += chunk) binary += String.fromCharCode(...arr.subarray(i, i + chunk));
-  return `data:${mime || "image/jpeg"};base64,${btoa(binary)}`;
+/** Extracts a book's cover from its epub blob, downscaled to a crisp thumbnail
+ *  (see resize-cover). Null when the epub has no cover. Used to populate host
+ *  book covers after the reader has the bytes. */
+export async function extractCover(blob: Blob): Promise<string | null> {
+  const meta = await extractEpubMetadata(blob);
+  return resizeCoverToDataUrl(meta.coverBytes, meta.coverMime);
 }
 
 export async function listBooks(): Promise<Book[]> {
@@ -116,7 +115,7 @@ export async function importFile(file: File): Promise<Book> {
     exploredCharCount: 0,
     charCount: 0,
     favorite: false,
-    coverDataUrl: coverDataUrl(meta.coverBytes ?? undefined, meta.coverMime),
+    coverDataUrl: await resizeCoverToDataUrl(meta.coverBytes, meta.coverMime),
     source: "local",
   };
   await idbPutRecord(STORE_BOOKS, rec);

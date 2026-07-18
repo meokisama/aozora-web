@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { BarChart3, BookOpen, CheckCircle2, Circle, Heart, Library } from "lucide-react";
+import { BarChart3, BookOpen, CheckCircle2, Circle, Heart, Info, Library } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { readingStatus } from "./format";
 import { useLibraryStore } from "@/stores/library-store";
@@ -90,7 +90,15 @@ export function LibrarySidebar() {
   return (
     <aside className="flex h-full w-52 shrink-0 flex-col border-r bg-sidebar">
       <div className="flex shrink-0 items-center justify-center border-b p-4">
-        <img src={aozoraLogo} alt="Aozora" className="h-26 w-auto object-contain" draggable={false} />
+        <a
+          href="https://github.com/meokisama/aozora"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Aozora on GitHub (the original desktop app)"
+          className="transition-opacity hover:opacity-80"
+        >
+          <img src={aozoraLogo} alt="Aozora" className="h-26 w-auto object-contain" draggable={false} />
+        </a>
       </div>
 
       <nav className="shrink-0 space-y-0.5 px-2 py-3">
@@ -113,6 +121,7 @@ export function LibrarySidebar() {
 
       <nav className="shrink-0 space-y-0.5 border-t px-2 py-3">
         <NavItem icon={BarChart3} label="Statistics" active={view === "stats"} onClick={() => setView("stats")} />
+        <NavItem icon={Info} label="About" active={view === "about"} onClick={() => setView("about")} />
       </nav>
 
       {authors.length > 0 && (

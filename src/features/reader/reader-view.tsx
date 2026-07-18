@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ArrowLeft, Bookmark, Highlighter, Images, List, Loader2, Maximize, Minimize, Search, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useReaderStore } from "@/stores/reader-store";
-import { saveProgress, getLocalBlob, upsertHostBook } from "@/platform/library";
+import { saveProgress, getLocalBlob, upsertHostBook, extractCover } from "@/platform/library";
 import { useSettingsStore, type WritingMode } from "@/stores/settings-store";
 import { useFontsStore } from "@/stores/fonts-store";
 import { useUiStore } from "@/stores/ui-store";
@@ -376,6 +376,16 @@ export function ReaderView() {
           setDownload(null);
           parsed = await parseBook(blob);
           await putCachedBook(book.id, parsed, book.key);
+          // Populate the host book's library cover from the epub (once, while we
+          // hold the decrypted bytes) — downscaled so the grid stays crisp.
+          if (book.source !== "local") {
+            const coverBlob = blob;
+            void extractCover(coverBlob)
+              .then((cover) => {
+                if (cover) void upsertHostBook({ name: book.filePath, coverDataUrl: cover });
+              })
+              .catch(() => {});
+          }
         }
         if (cancelled) return;
 

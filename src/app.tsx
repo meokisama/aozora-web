@@ -3,7 +3,9 @@ import { Loader2 } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import { ReaderView } from "@/features/reader/reader-view";
 import { LibraryView } from "@/features/library/library-view";
+import { LibrarySidebar } from "@/features/library/library-sidebar";
 import { StatsView } from "@/features/stats/stats-view";
+import { AboutView } from "@/features/about/about-view";
 import { useReaderStore } from "@/stores/reader-store";
 import { useUiStore } from "@/stores/ui-store";
 import { useSettingsStore, THEMES } from "@/stores/settings-store";
@@ -92,11 +94,18 @@ export function App() {
   }
 
   return (
-    <div className="h-screen">
+    <div className="flex h-screen flex-col">
       {error && (
         <div className="border-b bg-destructive/10 px-4 py-2 text-center text-xs text-destructive">{error}</div>
       )}
-      {view === "stats" ? <StatsView /> : <LibraryView />}
+      {/* The sidebar is persistent across the library / stats / about pages; only
+          the reader (handled above) takes over the whole screen. */}
+      <div className="flex min-h-0 flex-1">
+        <LibrarySidebar />
+        <main className="flex min-w-0 flex-1 flex-col">
+          {view === "stats" ? <StatsView /> : view === "about" ? <AboutView /> : <LibraryView />}
+        </main>
+      </div>
       <Toaster />
     </div>
   );

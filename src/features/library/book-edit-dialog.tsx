@@ -6,22 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useLibraryStore } from "@/stores/library-store";
+import { resizeCoverToDataUrl } from "@/lib/epub/resize-cover";
 import type { Book } from "@/lib/types";
 
-/** Reads a File into a data URL (the web store persists covers as data URLs). */
-function readAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}
-
 /**
- * Edit a book's title, author and cover. The chosen cover is read to a data URL
- * in the browser and handed to the store (`updateBook`), which downscales and
- * stores it — no native/main-process round-trip.
+ * Edit a book's title, author and cover. The chosen cover is downscaled to a
+ * crisp thumbnail data URL in the browser (see resize-cover) and handed to the
+ * store (`updateBook`) — no native/main-process round-trip.
  */
 export function BookEditDialog({ book, open, onOpenChange }: { book: Book; open: boolean; onOpenChange: (open: boolean) => void }) {
   const updateBook = useLibraryStore((s) => s.updateBook);
@@ -49,7 +40,8 @@ export function BookEditDialog({ book, open, onOpenChange }: { book: Book; open:
       return;
     }
     try {
-      setCover(await readAsDataUrl(file));
+      const url = await resizeCoverToDataUrl(await file.arrayBuffer(), file.type);
+      if (url) setCover(url);
     } catch {
       toast.error("Failed to read image");
     }
