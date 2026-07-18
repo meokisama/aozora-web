@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { MoreVertical } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BookActionsMenu, BookContextMenu } from "./book-actions";
-import { readingStatus, relativeTime, STATUS_LABELS, type ReadingStatus } from "./format";
+import { readingStatus, relativeTime, type ReadingStatus } from "./format";
 import bookTemplate from "@/assets/book-template.png";
 import type { Book } from "@/lib/types";
 
@@ -18,9 +19,10 @@ const STATUS_VARIANT: Record<ReadingStatus, "outline" | "secondary" | "default">
  * Hovering reveals a "⋯" actions menu; right-clicking opens the same actions.
  */
 export function BookRow({ book, onOpen }: { book: Book; onOpen?: (book: Book) => void }) {
+  const { t } = useTranslation();
   const status = readingStatus(book);
   const pct = Math.round((book.progress ?? 0) * 100);
-  const lastRead = relativeTime(book.lastOpenedAt);
+  const lastRead = relativeTime(book.lastOpenedAt, t);
 
   // Fall back to the template placeholder when the cover is missing or fails.
   const [coverError, setCoverError] = useState(false);
@@ -45,7 +47,7 @@ export function BookRow({ book, onOpen }: { book: Book; onOpen?: (book: Book) =>
         </button>
 
         <Badge variant={STATUS_VARIANT[status]} className="hidden shrink-0 sm:inline-flex">
-          {STATUS_LABELS[status]}
+          {t(`status.${status}`)}
         </Badge>
 
         <div className="hidden w-28 shrink-0 items-center gap-2 md:flex">
@@ -63,7 +65,7 @@ export function BookRow({ book, onOpen }: { book: Book; onOpen?: (book: Book) =>
             <Button
               variant="ghost"
               size="icon-sm"
-              aria-label="Book actions"
+              aria-label={t("library.actions.bookActions")}
               className="text-muted-foreground opacity-0 hover:text-foreground focus-visible:opacity-100 group-hover/row:opacity-100 data-[state=open]:opacity-100"
             >
               <MoreVertical className="size-4" />

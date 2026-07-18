@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { BarChart3, BookCheck, CalendarDays, Clock, Flame, Gauge, Loader2, Type } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -20,6 +21,7 @@ import { Milestones } from "./milestones";
  * (mostly presentational) section components.
  */
 export function StatsView() {
+  const { t } = useTranslation();
   const books = useLibraryStore((s) => s.books);
   const dailyGoal = useStatsPrefs((s) => s.dailyGoal);
   const setDailyGoal = useStatsPrefs((s) => s.setDailyGoal);
@@ -77,10 +79,10 @@ export function StatsView() {
       const key = shiftDay(todayKey, -i);
       const v = valueByDay.get(key);
       const value = metric === "minutes" ? (v?.ms || 0) / 60000 : v?.chars || 0;
-      arr.push({ key, value, tip: `${key} · ${formatCompact(v?.chars || 0)} chars · ${formatDuration(v?.ms || 0)}` });
+      arr.push({ key, value, tip: t("stats.barTooltip", { key, chars: formatCompact(v?.chars || 0), dur: formatDuration(v?.ms || 0) }) });
     }
     return arr;
-  }, [valueByDay, todayKey, metric]);
+  }, [valueByDay, todayKey, metric, t]);
 
   // 24 hour-of-day buckets.
   const hourly = useMemo(() => {
@@ -93,8 +95,8 @@ export function StatsView() {
         b.value = metric === "minutes" ? (h.ms || 0) / 60000 : h.chars || 0;
       }
     }
-    return buckets.map((b) => ({ ...b, tip: `${String(b.key).padStart(2, "0")}:00 · ${formatCompact(b.chars)} chars · ${formatDuration(b.ms)}` }));
-  }, [data, metric]);
+    return buckets.map((b) => ({ ...b, tip: t("stats.barTooltip", { key: `${String(b.key).padStart(2, "0")}:00`, chars: formatCompact(b.chars), dur: formatDuration(b.ms) }) }));
+  }, [data, metric, t]);
 
   // Join each per-book stat to its library Book; drop stats whose book is gone
   // so we only render real covers.
@@ -139,8 +141,8 @@ export function StatsView() {
           <div className="flex w-full max-w-sm flex-col items-center gap-3 border-2 border-dashed border-border px-8 py-12 text-center">
             <BarChart3 className="size-10 text-muted-foreground" strokeWidth={1.5} />
             <div className="space-y-1">
-              <p className="text-sm font-medium">No reading recorded yet</p>
-              <p className="text-xs text-muted-foreground">Open a book and start reading — your activity will show up here.</p>
+              <p className="text-sm font-medium">{t("stats.noData")}</p>
+              <p className="text-xs text-muted-foreground">{t("stats.noDataHint")}</p>
             </div>
           </div>
         </div>
@@ -148,12 +150,12 @@ export function StatsView() {
         <div className="flex-1 space-y-8 overflow-auto p-6">
           {/* Headline totals. */}
           <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
-            <StatCard icon={Type} label="Characters" value={formatCompact(overview.totalChars)} sub={`${overview.sessionCount} sessions`} />
-            <StatCard icon={Clock} label="Time read" value={formatDuration(overview.totalMs)} sub={`${overview.activeDays} active days`} />
-            <StatCard icon={Gauge} label="Speed" value={formatCompact(speedCpm)} sub="chars / min" />
-            <StatCard icon={CalendarDays} label="Active days" value={overview.activeDays} sub="all time" />
-            <StatCard icon={Flame} label="Streak" value={`${streaks.current}d`} sub={`Longest ${streaks.longest}d`} />
-            <StatCard icon={BookCheck} label="Finished" value={booksFinished} sub="books" />
+            <StatCard icon={Type} label={t("stats.characters")} value={formatCompact(overview.totalChars)} sub={t("stats.sessions", { count: overview.sessionCount })} />
+            <StatCard icon={Clock} label={t("stats.timeRead")} value={formatDuration(overview.totalMs)} sub={t("stats.activeDaysCount", { count: overview.activeDays })} />
+            <StatCard icon={Gauge} label={t("stats.speed")} value={formatCompact(speedCpm)} sub={t("stats.charsPerMin")} />
+            <StatCard icon={CalendarDays} label={t("stats.activeDays")} value={overview.activeDays} sub={t("stats.allTime")} />
+            <StatCard icon={Flame} label={t("stats.streak")} value={t("stats.daysShort", { count: streaks.current })} sub={t("stats.longest", { count: streaks.longest })} />
+            <StatCard icon={BookCheck} label={t("stats.finished")} value={booksFinished} sub={t("stats.books")} />
           </section>
 
           {/* Daily goal + Activity side by side on wide screens. */}
@@ -163,14 +165,14 @@ export function StatsView() {
             {/* Activity heatmap. */}
             <div className="space-y-3 lg:col-span-2">
               <div className="flex min-h-7 flex-wrap items-center gap-3">
-                <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Activity</h2>
+                <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("stats.activity")}</h2>
                 <div className="ml-auto flex items-center gap-2">
                   <ToggleGroup type="single" variant="outline" spacing={0} size="sm" value={metric} onValueChange={(v) => v && setMetric(v)}>
                     <ToggleGroupItem value="chars" className="px-2 text-[11px]">
-                      Chars
+                      {t("stats.chars")}
                     </ToggleGroupItem>
                     <ToggleGroupItem value="minutes" className="px-2 text-[11px]">
-                      Minutes
+                      {t("stats.minutes")}
                     </ToggleGroupItem>
                   </ToggleGroup>
                   <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
@@ -202,8 +204,8 @@ export function StatsView() {
                 <div className="flex items-center justify-between px-3">
                   <p className="text-[11px] text-muted-foreground">
                     {selected
-                      ? `${selectedDay} — ${formatCompact(selected.chars || 0)} chars · ${formatDuration(selected.ms || 0)} · ${selected.sessions} session${selected.sessions === 1 ? "" : "s"}`
-                      : "Click a day for details"}
+                      ? t("stats.dayDetail", { day: selectedDay, chars: formatCompact(selected.chars || 0), dur: formatDuration(selected.ms || 0), count: selected.sessions })
+                      : t("stats.clickDay")}
                   </p>
                   <HeatmapLegend />
                 </div>
@@ -215,20 +217,20 @@ export function StatsView() {
           <section className="grid gap-3 lg:grid-cols-2">
             <Card size="sm" className="gap-3">
               <div className="px-3 pt-1">
-                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Last 30 days</h3>
+                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("stats.last30")}</h3>
               </div>
               <div className="px-3 pb-2">
                 <BarChart bars={trend} />
                 <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
                   <span>{trend[0]?.key.slice(5)}</span>
-                  <span>Today</span>
+                  <span>{t("stats.today")}</span>
                 </div>
               </div>
             </Card>
 
             <Card size="sm" className="gap-3">
               <div className="px-3 pt-1">
-                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">By hour of day</h3>
+                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("stats.byHour")}</h3>
               </div>
               <div className="px-3 pb-2">
                 <BarChart bars={hourly} />
@@ -248,7 +250,7 @@ export function StatsView() {
           {/* Most-read books, ranked by time read. */}
           {topBooks.length > 0 && (
             <section className="space-y-3">
-              <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Most-read books</h2>
+              <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("stats.mostRead")}</h2>
               <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-x-5 gap-y-6">
                 {topBooks.map(({ stat, book }) => (
                   <div key={stat.bookId} className="space-y-1">
@@ -263,7 +265,7 @@ export function StatsView() {
                     </div>
                     <div className="flex justify-between text-[10px] text-muted-foreground/80 tabular-nums">
                       <p>{formatDuration(stat.ms || 0)}</p>
-                      <p>{formatCompact(stat.chars || 0)} chars</p>
+                      <p>{t("stats.charsCount", { chars: formatCompact(stat.chars || 0) })}</p>
                     </div>
                   </div>
                 ))}

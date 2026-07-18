@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useAnchoredPosition } from "./hooks/use-anchored-position";
 import { useDismiss } from "./hooks/use-dismiss";
 
@@ -25,6 +26,7 @@ const NOTE_CLASS =
  * renders null when closed so the reader can keep it mounted and feed it state.
  */
 export function FootnotePopup({ html, anchor, onClose }: Props) {
+  const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
   const pos = useAnchoredPosition(ref, anchor, html);
 
@@ -36,7 +38,7 @@ export function FootnotePopup({ html, anchor, onClose }: Props) {
     <div
       ref={ref}
       role="dialog"
-      aria-label="Footnote"
+      aria-label={t("reader.footnote")}
       style={{
         position: "fixed",
         left: pos?.left ?? -9999,

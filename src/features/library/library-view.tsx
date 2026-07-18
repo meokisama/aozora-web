@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpDown, BookPlus, LayoutGrid, List, Loader2, Search, UploadCloud, X } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -15,12 +17,7 @@ import { openLibraryBook } from "@/platform/open-book";
 import { readingStatus } from "./format";
 import type { Book } from "@/lib/types";
 
-const STATUS_TABS = [
-  { value: "all", label: "All" },
-  { value: "reading", label: "Reading" },
-  { value: "finished", label: "Finished" },
-  { value: "unread", label: "Unread" },
-];
+const STATUS_TABS = ["all", "reading", "finished", "unread"];
 
 // Cover size → grid column min-width and "Continue reading" shelf card width.
 // Full literal class strings so Tailwind's JIT picks them up (no interpolation).
@@ -69,8 +66,10 @@ function sortBooks(list: Book[], sort: SortKey) {
 }
 
 /** The progress-aware "Importing…" line, shared by the toast and the button label. */
-function importingLabel(progress: { current: number; total: number } | null): string {
-  return progress && progress.total > 1 ? `Importing ${progress.current}/${progress.total}…` : "Importing…";
+function importingLabel(t: TFunction, progress: { current: number; total: number } | null): string {
+  return progress && progress.total > 1
+    ? t("library.importingProgress", { current: progress.current, total: progress.total })
+    : t("library.importing");
 }
 
 /**
@@ -79,6 +78,7 @@ function importingLabel(progress: { current: number; total: number } | null): st
  * reading" shelf and the full grid (or list) of imported books.
  */
 export function LibraryView() {
+  const { t } = useTranslation();
   const books = useLibraryStore((s) => s.books);
   const loading = useLibraryStore((s) => s.loading);
   const importing = useLibraryStore((s) => s.importing);
@@ -109,7 +109,7 @@ export function LibraryView() {
   const dragDepth = useRef(0);
 
   useEffect(() => {
-    loadBooks().catch(() => toast.error("Failed to load library"));
+    loadBooks().catch(() => toast.error(t("library.failedToLoad")));
   }, [loadBooks]);
 
   // Books matching the active status tab + author + search box, then sorted.
@@ -143,7 +143,7 @@ export function LibraryView() {
   const importToastId = useRef<string | number | null>(null);
   useEffect(() => {
     if (importing) {
-      importToastId.current = toast.loading(importingLabel(importProgress), { id: importToastId.current ?? undefined });
+      importToastId.current = toast.loading(importingLabel(t, importProgress), { id: importToastId.current ?? undefined });
     } else if (importToastId.current != null) {
       toast.dismiss(importToastId.current);
       importToastId.current = null;
@@ -151,8 +151,8 @@ export function LibraryView() {
   }, [importing, importProgress]);
 
   const reportImport = ({ added, failed }: { added: number; failed: string[] }) => {
-    if (added) toast.success(`Imported ${added} book${added > 1 ? "s" : ""}`);
-    if (failed.length) toast.error(`Could not import: ${failed.join(", ")}`);
+    if (added) toast.success(t("library.imported", { count: added }));
+    if (failed.length) toast.error(t("library.couldNotImport", { names: failed.join(", ") }));
   };
 
   // Open a stored book: resolve it to a reader-ready WebBook (host token/URL or
@@ -161,7 +161,7 @@ export function LibraryView() {
     try {
       useReaderStore.getState().open(await openLibraryBook(book));
     } catch {
-      toast.error("Could not open this book.");
+      toast.error(t("app.openError"));
     }
   };
 
@@ -178,7 +178,7 @@ export function LibraryView() {
     try {
       reportImport(await importFiles(files));
     } catch {
-      toast.error("Import failed");
+      toast.error(t("library.importFailed"));
     }
   };
 
@@ -206,17 +206,17 @@ export function LibraryView() {
     const files = e.dataTransfer.files;
     if (!files?.length) return;
     if (!Array.from(files).some((f) => f.name.toLowerCase().endsWith(".epub"))) {
-      toast.error("Only EPUB files can be imported");
+      toast.error(t("library.onlyEpub"));
       return;
     }
     try {
       reportImport(await importFiles(files));
     } catch {
-      toast.error("Import failed");
+      toast.error(t("library.importFailed"));
     }
   };
 
-  const importLabel = importing ? importingLabel(importProgress) : "Import EPUB";
+  const importLabel = importing ? importingLabel(t, importProgress) : t("library.importEpub");
 
   const importButton = (
     <Button onClick={handleImport} disabled={importing}>
@@ -242,7 +242,13 @@ export function LibraryView() {
 
   const heading =
     authorFilter ??
-    (statusFilter === "all" ? "All books" : statusFilter === "favorites" ? "Favorites" : STATUS_TABS.find((t) => t.value === statusFilter)?.label);
+    (statusFilter === "all"
+      ? t("library.allBooks")
+      : statusFilter === "favorites"
+        ? t("library.favorites")
+        : STATUS_TABS.includes(statusFilter)
+          ? t(`library.tabs.${statusFilter}`)
+          : undefined);
 
   return (
     <div className="relative flex h-full" onDragEnter={handleDragEnter} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
@@ -251,7 +257,7 @@ export function LibraryView() {
       {dragging && (
         <div className="pointer-events-none absolute inset-3 z-50 flex flex-col items-center justify-center gap-3 rounded-none border-2 border-dashed border-primary bg-background/85 backdrop-blur-sm">
           <UploadCloud className="size-10 text-primary" strokeWidth={1.5} />
-          <p className="text-sm font-medium">Drop EPUB files to import</p>
+          <p className="text-sm font-medium">{t("library.dropToImport")}</p>
         </div>
       )}
 
@@ -260,12 +266,12 @@ export function LibraryView() {
           <header className="flex h-12 shrink-0 items-center gap-3 border-b px-6">
             <div className="relative w-64">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search title or author" className="pr-7 pl-8" />
+              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("library.searchPlaceholder")} className="pr-7 pl-8" />
               {search && (
                 <button
                   type="button"
                   onClick={() => setSearch("")}
-                  aria-label="Clear search"
+                  aria-label={t("common.clearSearch")}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
                   <X className="size-3.5" />
@@ -284,17 +290,17 @@ export function LibraryView() {
                 <SelectContent>
                   {SORT_OPTIONS.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
+                      {t(`options.sort.${opt.value}`)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
 
               <ToggleGroup type="single" variant="outline" spacing={0} value={view} onValueChange={(v) => v && setView(v as ViewMode)} size="default">
-                <ToggleGroupItem value="grid" aria-label="Grid view">
+                <ToggleGroupItem value="grid" aria-label={t("library.gridView")}>
                   <LayoutGrid className="size-3.5" />
                 </ToggleGroupItem>
-                <ToggleGroupItem value="list" aria-label="List view">
+                <ToggleGroupItem value="list" aria-label={t("library.listView")}>
                   <List className="size-3.5" />
                 </ToggleGroupItem>
               </ToggleGroup>
@@ -313,8 +319,8 @@ export function LibraryView() {
             <div className="flex w-full max-w-sm flex-col items-center gap-4 border-2 border-dashed border-border px-8 py-12 text-center">
               <UploadCloud className="size-10 text-muted-foreground" strokeWidth={1.5} />
               <div className="space-y-1">
-                <p className="text-sm font-medium">Your library is empty</p>
-                <p className="text-xs text-muted-foreground">Drag &amp; drop EPUB files here, or import them manually.</p>
+                <p className="text-sm font-medium">{t("library.empty")}</p>
+                <p className="text-xs text-muted-foreground">{t("library.emptyHint")}</p>
               </div>
               {importButton}
             </div>
@@ -323,7 +329,7 @@ export function LibraryView() {
           <div className="flex-1 space-y-8 overflow-auto p-6">
             {continueReading.length > 0 && (
               <section>
-                <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Continue reading</h2>
+                <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("library.continueReading")}</h2>
                 <div className="flex gap-5 overflow-x-auto -my-8 py-8">
                   {continueReading.map((book) => (
                     <div key={book.id} className={`${SHELF_W[cardSize]} shrink-0`}>
@@ -342,7 +348,7 @@ export function LibraryView() {
               {visibleBooks.length === 0 ? (
                 <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
                   <Search className="size-7 text-muted-foreground/60" strokeWidth={1.5} />
-                  <p className="text-xs text-muted-foreground">No books match your filters.</p>
+                  <p className="text-xs text-muted-foreground">{t("library.noMatch")}</p>
                   <Button
                     variant="outline"
                     size="sm"
@@ -352,7 +358,7 @@ export function LibraryView() {
                       setAuthorFilter(null);
                     }}
                   >
-                    Clear filters
+                    {t("library.clearFilters")}
                   </Button>
                 </div>
               ) : (

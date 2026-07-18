@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Check, Clock3 } from "lucide-react";
 import { BookContextMenu } from "./book-actions";
 import { readingStatus, relativeTime } from "./format";
@@ -11,9 +12,10 @@ import type { Book } from "@/lib/types";
  * Clicking the cover opens the book; right-clicking opens the action menu.
  */
 export function BookCard({ book, onOpen }: { book: Book; onOpen?: (book: Book) => void }) {
+  const { t } = useTranslation();
   const status = readingStatus(book);
   const pct = Math.round((book.progress ?? 0) * 100);
-  const lastRead = relativeTime(book.lastOpenedAt);
+  const lastRead = relativeTime(book.lastOpenedAt, t);
   const showMetadata = useLibraryPrefs((s) => s.showCardMetadata);
 
   // Fall back to the placeholder when the cover is missing or fails to decode;

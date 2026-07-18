@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { Highlighter } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useDismiss } from "./hooks/use-dismiss";
 
 interface Props {
@@ -22,6 +23,7 @@ const MARGIN = 8; // min gap from the viewport edge
  * always-on without a full popup covering what you read.
  */
 export function AnnotationTrigger({ point, onPick, onClose }: Props) {
+  const { t } = useTranslation();
   const ref = useRef<HTMLButtonElement>(null);
 
   useDismiss(!!point, ref, onClose);
@@ -36,8 +38,8 @@ export function AnnotationTrigger({ point, onPick, onClose }: Props) {
       ref={ref}
       type="button"
       onClick={onPick}
-      aria-label="Highlight selection"
-      title="Highlight"
+      aria-label={t("reader.highlightSelection")}
+      title={t("reader.highlight")}
       style={{ position: "fixed", left, top, width: SIZE, height: SIZE }}
       className="z-50 cursor-pointer inline-flex items-center justify-center rounded-full border bg-popover text-popover-foreground shadow-md transition-colors hover:bg-accent hover:text-accent-foreground"
     >

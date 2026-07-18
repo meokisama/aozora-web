@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Target } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -44,28 +45,29 @@ interface GoalCardProps {
 }
 
 export function GoalCard({ dailyGoal, setDailyGoal, todayChars, goalPct, goalStreak }: GoalCardProps) {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col gap-3 lg:col-span-1">
       <div className="flex min-h-7 items-center">
-        <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Daily goal</h2>
+        <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("goal.dailyGoal")}</h2>
       </div>
       <Card size="sm" className="flex-1 justify-center">
         <div className="flex items-center gap-5 px-3 py-1">
-          <GoalRing pct={goalPct} label={dailyGoal > 0 ? `${Math.round(goalPct * 100)}%` : "—"} sub={dailyGoal > 0 ? "today" : "off"} />
+          <GoalRing pct={goalPct} label={dailyGoal > 0 ? `${Math.round(goalPct * 100)}%` : "—"} sub={dailyGoal > 0 ? t("goal.today") : t("goal.off")} />
           <div className="min-w-0 flex-1 space-y-2">
             <div className="flex items-center gap-2">
               <Target className="size-3.5 text-muted-foreground" />
               <span className="text-xs">
                 {dailyGoal > 0
-                  ? `${formatCompact(todayChars)} / ${formatCompact(dailyGoal)} characters today`
-                  : "Set a daily target to track your goal"}
+                  ? t("goal.todayProgress", { current: formatCompact(todayChars), target: formatCompact(dailyGoal) })
+                  : t("goal.setTarget")}
               </span>
             </div>
             {dailyGoal > 0 && (
               <p className="text-[11px] text-muted-foreground">
                 {goalStreak.current > 0
-                  ? `${goalStreak.current}-day goal streak · best ${goalStreak.longest}`
-                  : `Best goal streak: ${goalStreak.longest} day${goalStreak.longest === 1 ? "" : "s"}`}
+                  ? t("goal.streakSummary", { count: goalStreak.current, best: goalStreak.longest })
+                  : t("goal.bestStreak", { count: goalStreak.longest })}
               </p>
             )}
             <Select value={String(dailyGoal)} onValueChange={(v) => setDailyGoal(Number(v))}>
@@ -75,7 +77,7 @@ export function GoalCard({ dailyGoal, setDailyGoal, todayChars, goalPct, goalStr
               <SelectContent>
                 {DAILY_GOAL_OPTIONS.map((o) => (
                   <SelectItem key={o.value} value={String(o.value)}>
-                    {o.label}
+                    {o.value === 0 ? t("options.dailyGoal.off") : t("options.dailyGoal.chars", { count: o.value })}
                   </SelectItem>
                 ))}
               </SelectContent>

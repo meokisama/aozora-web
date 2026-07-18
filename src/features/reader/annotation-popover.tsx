@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { Check, Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Textarea } from "@/components/ui/textarea";
 import { ANNOTATION_COLORS } from "@/lib/reader/annotations";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,7 @@ interface Props {
  * like the footnote popup, and dismissed on Escape or a click outside.
  */
 export function AnnotationPopover({ anchor, color, note, isNew, onColor, onNote, onDelete, onClose }: Props) {
+  const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
   // The editor is fixed-size (2-row, non-resizable textarea), so re-place only
   // when the anchor or the delete-button's presence changes — not per keystroke.
@@ -41,7 +43,7 @@ export function AnnotationPopover({ anchor, color, note, isNew, onColor, onNote,
     <div
       ref={ref}
       role="dialog"
-      aria-label="Highlight"
+      aria-label={t("reader.highlight")}
       style={{
         position: "fixed",
         left: pos?.left ?? -9999,
@@ -56,8 +58,8 @@ export function AnnotationPopover({ anchor, color, note, isNew, onColor, onNote,
             key={c.key}
             type="button"
             onClick={() => onColor(c.key)}
-            aria-label={c.label}
-            title={c.label}
+            aria-label={t(`options.annotationColors.${c.key}`)}
+            title={t(`options.annotationColors.${c.key}`)}
             className={cn(
               "flex size-6 items-center justify-center rounded-full ring-offset-1 transition-transform hover:scale-110",
               color === c.key && "ring-2 ring-foreground/60",
@@ -71,8 +73,8 @@ export function AnnotationPopover({ anchor, color, note, isNew, onColor, onNote,
           <button
             type="button"
             onClick={onDelete}
-            aria-label="Delete highlight"
-            title="Delete highlight"
+            aria-label={t("reader.deleteHighlight")}
+            title={t("reader.deleteHighlight")}
             className="ml-auto cursor-pointer flex size-6 items-center justify-center rounded-none text-muted-foreground transition-colors hover:text-destructive"
           >
             <Trash2 className="size-4" />
@@ -82,7 +84,7 @@ export function AnnotationPopover({ anchor, color, note, isNew, onColor, onNote,
       <Textarea
         value={note}
         onChange={(e) => onNote(e.target.value)}
-        placeholder={isNew ? "Add a note (optional)…" : "Add a note…"}
+        placeholder={isNew ? t("reader.addNoteOptional") : t("reader.addNote")}
         rows={2}
         className="mt-2 min-h-0 resize-none text-xs"
       />

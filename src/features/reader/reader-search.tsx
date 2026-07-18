@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import type { SearchResult } from "@/lib/reader/search";
@@ -23,20 +24,21 @@ interface Props {
  * and jumps to the hit's character offset on click.
  */
 export function ReaderSearch({ open, onOpenChange, query, onQueryChange, results, total, capped, onJump }: Props) {
+  const { t } = useTranslation();
   const trimmed = query.trim();
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="left" className="w-80 gap-0 p-0 sm:max-w-80">
         <SheetHeader className="border-b">
-          <SheetTitle>Search</SheetTitle>
+          <SheetTitle>{t("common.search")}</SheetTitle>
         </SheetHeader>
         <div className="border-b p-2">
           <div className="relative">
             <Input
               value={query}
               onChange={(e) => onQueryChange(e.target.value)}
-              placeholder="Search in book"
-              aria-label="Search in book"
+              placeholder={t("reader.searchInBook")}
+              aria-label={t("reader.searchInBook")}
               autoFocus
               className={query ? "pr-8" : undefined}
             />
@@ -44,7 +46,7 @@ export function ReaderSearch({ open, onOpenChange, query, onQueryChange, results
               <button
                 type="button"
                 onClick={() => onQueryChange("")}
-                aria-label="Clear search"
+                aria-label={t("common.clearSearch")}
                 className="absolute inset-y-0 right-0 flex items-center px-2 text-muted-foreground transition-colors hover:text-foreground"
               >
                 <X className="size-3.5" />
@@ -53,7 +55,9 @@ export function ReaderSearch({ open, onOpenChange, query, onQueryChange, results
           </div>
           {trimmed && (
             <p className="px-1 pt-1.5 text-[10px] text-muted-foreground">
-              {total === 0 ? "No matches" : `${total} match${total === 1 ? "" : "es"}${capped ? ` (showing first ${results.length})` : ""}`}
+              {total === 0
+                ? t("reader.noMatches")
+                : t("reader.matchCount", { count: total, cappedSuffix: capped ? t("reader.cappedSuffix", { n: results.length }) : "" })}
             </p>
           )}
         </div>

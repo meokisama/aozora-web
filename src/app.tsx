@@ -6,6 +6,7 @@ import { LibraryView } from "@/features/library/library-view";
 import { LibrarySidebar } from "@/features/library/library-sidebar";
 import { StatsView } from "@/features/stats/stats-view";
 import { AboutView } from "@/features/about/about-view";
+import { SettingsView } from "@/features/settings/settings-view";
 import { useReaderStore } from "@/stores/reader-store";
 import { useUiStore } from "@/stores/ui-store";
 import { useSettingsStore, THEMES } from "@/stores/settings-store";
@@ -103,7 +104,15 @@ export function App() {
       <div className="flex min-h-0 flex-1">
         <LibrarySidebar />
         <main className="flex min-w-0 flex-1 flex-col">
-          {view === "stats" ? <StatsView /> : view === "about" ? <AboutView /> : <LibraryView />}
+          {view === "stats" ? (
+            <StatsView />
+          ) : view === "about" ? (
+            <AboutView />
+          ) : view === "settings" ? (
+            <SettingsView />
+          ) : (
+            <LibraryView />
+          )}
         </main>
       </div>
       <Toaster />

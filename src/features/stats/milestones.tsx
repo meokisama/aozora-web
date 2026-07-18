@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { BookCheck, CalendarDays, Flame, Trophy, Type } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -15,6 +16,7 @@ interface MilestoneCardProps {
 
 /** An achievement track: current value + a row of threshold pills (next is ringed). */
 function MilestoneCard({ icon: Icon, label, value, format, status }: MilestoneCardProps) {
+  const { t } = useTranslation();
   return (
     <Card size="sm" className="gap-2">
       <div className="flex items-center gap-2 px-3 text-muted-foreground">
@@ -42,7 +44,7 @@ function MilestoneCard({ icon: Icon, label, value, format, status }: MilestoneCa
         ))}
       </div>
       <p className="px-3 text-[11px] text-muted-foreground">
-        {status.next != null ? `Now ${format(value)} · next ${format(status.next)}` : `All reached — ${format(value)}`}
+        {status.next != null ? t("milestones.next", { current: format(value), next: format(status.next) }) : t("milestones.allReached", { current: format(value) })}
       </p>
     </Card>
   );
@@ -59,28 +61,29 @@ interface MilestonesProps {
 }
 
 export function Milestones({ totalChars, activeDays, bestStreak, booksFinished }: MilestonesProps) {
+  const { t } = useTranslation();
   const tracks = useMemo(
     () => [
       {
         key: "chars",
         icon: Type,
-        label: "Characters",
+        label: t("milestones.characters"),
         value: totalChars,
         format: formatCompact,
         thresholds: [10_000, 50_000, 100_000, 500_000, 1_000_000, 5_000_000, 10_000_000],
       },
-      { key: "streak", icon: Flame, label: "Best streak", value: bestStreak, format: (n) => `${n}d`, thresholds: [3, 7, 14, 30, 60, 100, 365] },
-      { key: "days", icon: CalendarDays, label: "Active days", value: activeDays, format: asInt, thresholds: [1, 7, 30, 100, 365] },
-      { key: "books", icon: BookCheck, label: "Books finished", value: booksFinished, format: asInt, thresholds: [1, 5, 10, 25, 50, 100] },
+      { key: "streak", icon: Flame, label: t("milestones.bestStreak"), value: bestStreak, format: (n) => t("milestones.daysShort", { count: n }), thresholds: [3, 7, 14, 30, 60, 100, 365] },
+      { key: "days", icon: CalendarDays, label: t("milestones.activeDays"), value: activeDays, format: asInt, thresholds: [1, 7, 30, 100, 365] },
+      { key: "books", icon: BookCheck, label: t("milestones.booksFinished"), value: booksFinished, format: asInt, thresholds: [1, 5, 10, 25, 50, 100] },
     ],
-    [totalChars, activeDays, bestStreak, booksFinished],
+    [totalChars, activeDays, bestStreak, booksFinished, t],
   );
 
   return (
     <section className="space-y-3">
       <h2 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
         <Trophy className="size-3.5" />
-        Milestones
+        {t("milestones.title")}
       </h2>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {tracks.map((m) => (

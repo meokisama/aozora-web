@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft, Bookmark, Highlighter, Images, List, Loader2, Maximize, Minimize, Search, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useReaderStore } from "@/stores/reader-store";
@@ -72,6 +73,7 @@ const formatMB = (bytes: number) => `${(bytes / 1_048_576).toFixed(1)} MB`;
 /** Download overlay for large epubs: a determinate bar + "X% • loaded / total"
  *  when Content-Length is known, else an indeterminate bar + MB downloaded. */
 function LoadingProgress({ download }: { download: DownloadProgress }) {
+  const { t } = useTranslation();
   const { loaded, total } = download;
   const pct = total ? Math.min(100, Math.round((loaded / total) * 100)) : null;
   return (
@@ -84,7 +86,9 @@ function LoadingProgress({ download }: { download: DownloadProgress }) {
         />
       </div>
       <p className="text-xs tabular-nums text-muted-foreground">
-        {pct === null ? `Loading… ${formatMB(loaded)}` : `${pct}% · ${formatMB(loaded)} / ${formatMB(total!)}`}
+        {pct === null
+          ? `${t("reader.loading")} ${formatMB(loaded)}`
+          : t("reader.loadingProgress", { pct, loaded: formatMB(loaded), total: formatMB(total!) })}
       </p>
     </div>
   );
@@ -99,6 +103,7 @@ function LoadingProgress({ download }: { download: DownloadProgress }) {
  * re-flow and mode switches; persisted (debounced) and restored on next open.
  */
 export function ReaderView() {
+  const { t } = useTranslation();
   const book = useReaderStore((s) => s.currentBook);
   const close = useReaderStore((s) => s.close);
 
@@ -716,11 +721,11 @@ export function ReaderView() {
   return (
     <div className="flex h-full flex-col">
       <header className="flex items-center gap-2 border-b px-3 py-2">
-        <Button variant="ghost" size="icon" onClick={close} aria-label="Back to library">
+        <Button variant="ghost" size="icon" onClick={close} aria-label={t("reader.backToLibrary")}>
           <ArrowLeft className="size-4" />
         </Button>
         <p className="min-w-0 truncate text-xs font-medium tracking-tight">
-          {status === "loading" ? "Loading..." : `【${bookTitle || book.title}】`}
+          {status === "loading" ? t("reader.loading") : `【${bookTitle || book.title}】`}
         </p>
         {total > 0 && (
           <>
@@ -742,13 +747,13 @@ export function ReaderView() {
           </>
         )}
         <div className="flex-1" />
-        <Button variant="ghost" size="icon" onClick={() => setTocOpen(true)} disabled={!chapters.length} aria-label="Table of contents">
+        <Button variant="ghost" size="icon" onClick={() => setTocOpen(true)} disabled={!chapters.length} aria-label={t("reader.toc")}>
           <List className="size-4" />
         </Button>
-        <Button variant="ghost" size="icon" onClick={() => setSearchOpen(true)} disabled={!total || fixedLayout} aria-label="Search in book">
+        <Button variant="ghost" size="icon" onClick={() => setSearchOpen(true)} disabled={!total || fixedLayout} aria-label={t("reader.searchInBook")}>
           <Search className="size-4" />
         </Button>
-        <Button variant="ghost" size="icon" onClick={() => setGalleryOpen(true)} disabled={!illustrations.length} aria-label="Illustrations">
+        <Button variant="ghost" size="icon" onClick={() => setGalleryOpen(true)} disabled={!illustrations.length} aria-label={t("reader.illustrations")}>
           <Images className="size-4" />
         </Button>
         <Button
@@ -758,17 +763,17 @@ export function ReaderView() {
             setNameInput(computeDefaultName());
             setBookmarksOpen(true);
           }}
-          aria-label="Bookmarks"
+          aria-label={t("reader.bookmarks")}
         >
           <Bookmark className="size-4" />
         </Button>
-        <Button variant="ghost" size="icon" onClick={() => setAnnotationsOpen(true)} disabled={!total || fixedLayout} aria-label="Highlights">
+        <Button variant="ghost" size="icon" onClick={() => setAnnotationsOpen(true)} disabled={!total || fixedLayout} aria-label={t("reader.highlights")}>
           <Highlighter className="size-4" />
         </Button>
-        <Button variant="ghost" size="icon" onClick={toggleFullscreen} aria-label={fullscreen ? "Exit full screen" : "Full screen"}>
+        <Button variant="ghost" size="icon" onClick={toggleFullscreen} aria-label={fullscreen ? t("reader.exitFullScreen") : t("reader.fullScreen")}>
           {fullscreen ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
         </Button>
-        <Button variant="ghost" size="icon" onClick={() => setSettingsOpen(true)} aria-label="Reader settings">
+        <Button variant="ghost" size="icon" onClick={() => setSettingsOpen(true)} aria-label={t("reader.settings")}>
           <Settings className="size-4" />
         </Button>
       </header>
@@ -777,7 +782,7 @@ export function ReaderView() {
         {status !== "ready" && (
           <div className="absolute inset-0 flex items-center justify-center bg-background">
             {status === "error" ? (
-              <p className="text-sm text-muted-foreground">Could not open this book.</p>
+              <p className="text-sm text-muted-foreground">{t("app.openError")}</p>
             ) : download ? (
               <LoadingProgress download={download} />
             ) : (

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Check, Heart, HeartOff, Pencil, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
@@ -42,6 +43,7 @@ interface BookActionsState {
  * context menu and a dropdown. Owning the dialogs here keeps the two menus in sync.
  */
 function useBookActions(book: Book): BookActionsState {
+  const { t } = useTranslation();
   const removeBook = useLibraryStore((s) => s.removeBook);
   const setFinished = useLibraryStore((s) => s.setFinished);
   const toggleFavorite = useLibraryStore((s) => s.toggleFavorite);
@@ -52,33 +54,33 @@ function useBookActions(book: Book): BookActionsState {
   const handleRemove = async () => {
     try {
       await removeBook(book.id);
-      toast.success("Book removed");
+      toast.success(t("library.actions.bookRemoved"));
     } catch {
-      toast.error("Failed to remove book");
+      toast.error(t("library.actions.removeFailed"));
     }
   };
 
   const handleMark = (finished: boolean) => {
-    setFinished(book.id, finished).catch(() => toast.error("Failed to update status"));
+    setFinished(book.id, finished).catch(() => toast.error(t("library.actions.statusFailed")));
   };
 
   const handleToggleFavorite = () => {
     toggleFavorite(book.id)
-      .then(() => toast.success(book.favorite ? "Removed from favorites" : "Added to favorites"))
-      .catch(() => toast.error("Failed to update favorite"));
+      .then(() => toast.success(book.favorite ? t("library.actions.removedFromFavorites") : t("library.actions.addedToFavorites")))
+      .catch(() => toast.error(t("library.actions.favoriteFailed")));
   };
 
   // Descriptors shared by both menus; falsy entries are filtered so the mark
   // items only show when they'd actually change state.
   const items = [
-    { key: "edit", label: "Edit details", icon: Pencil, onSelect: () => setEditOpen(true) },
+    { key: "edit", label: t("library.actions.editDetails"), icon: Pencil, onSelect: () => setEditOpen(true) },
     book.favorite
-      ? { key: "favorite", label: "Remove from favorites", icon: HeartOff, onSelect: handleToggleFavorite }
-      : { key: "favorite", label: "Add to favorites", icon: Heart, onSelect: handleToggleFavorite },
-    status !== "finished" && { key: "finish", label: "Mark as finished", icon: Check, onSelect: () => handleMark(true) },
-    status !== "unread" && { key: "unread", label: "Mark as unread", icon: RotateCcw, onSelect: () => handleMark(false) },
+      ? { key: "favorite", label: t("library.actions.removeFromFavorites"), icon: HeartOff, onSelect: handleToggleFavorite }
+      : { key: "favorite", label: t("library.actions.addToFavorites"), icon: Heart, onSelect: handleToggleFavorite },
+    status !== "finished" && { key: "finish", label: t("library.actions.markFinished"), icon: Check, onSelect: () => handleMark(true) },
+    status !== "unread" && { key: "unread", label: t("library.actions.markUnread"), icon: RotateCcw, onSelect: () => handleMark(false) },
     { key: "sep", separator: true },
-    { key: "remove", label: "Remove", icon: Trash2, variant: "destructive", onSelect: () => setConfirmOpen(true) },
+    { key: "remove", label: t("library.actions.remove"), icon: Trash2, variant: "destructive", onSelect: () => setConfirmOpen(true) },
   ].filter(Boolean) as ActionItem[];
 
   return { status, items, editOpen, setEditOpen, confirmOpen, setConfirmOpen, handleRemove };
@@ -86,6 +88,7 @@ function useBookActions(book: Book): BookActionsState {
 
 /** The edit dialog + remove confirmation, rendered once per menu instance. */
 function BookActionDialogs({ book, state }: { book: Book; state: BookActionsState }) {
+  const { t } = useTranslation();
   return (
     <>
       <BookEditDialog book={book} open={state.editOpen} onOpenChange={state.setEditOpen} />
@@ -93,14 +96,12 @@ function BookActionDialogs({ book, state }: { book: Book; state: BookActionsStat
       <AlertDialog open={state.confirmOpen} onOpenChange={state.setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove book?</AlertDialogTitle>
-            <AlertDialogDescription>
-              “{book.title}” will be removed from your library and its files deleted. This cannot be undone.
-            </AlertDialogDescription>
+            <AlertDialogTitle>{t("library.actions.removeTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("library.actions.removeConfirm", { title: book.title })}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={state.handleRemove}>Remove</AlertDialogAction>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={state.handleRemove}>{t("library.actions.remove")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

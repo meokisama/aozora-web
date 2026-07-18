@@ -1,4 +1,5 @@
 import React from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import aozoraLogo from "@/assets/aozora-logo.png";
 
@@ -18,33 +19,33 @@ function GithubIcon(props: React.SVGProps<SVGSVGElement>) {
  * is a trimmed "mini" edition built specifically for ranobe-hub.
  */
 export function AboutView() {
+  const { t } = useTranslation();
   return (
     <div className="flex h-full flex-col">
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto flex max-w-xl flex-col items-center gap-6 px-6 py-12 text-center">
-          <a href={AOZORA_REPO} target="_blank" rel="noopener noreferrer" title="View the original Aozora on GitHub">
+          <a href={AOZORA_REPO} target="_blank" rel="noopener noreferrer" title={t("about.githubTitle")}>
             <img src={aozoraLogo} alt="Aozora" className="h-24 w-auto object-contain transition-opacity hover:opacity-80" draggable={false} />
           </a>
 
           <div className="space-y-3 text-sm/relaxed text-foreground/90">
             <p>
-              <span className="font-semibold">Aozora</span> is a desktop EPUB reader for Japanese learners — full-text search, a Yomitan pop-up
-              dictionary, Anki mining, VOICEVOX text-to-speech, reading statistics, and more, wrapped around a reflowable + manga reader.
+              <Trans i18nKey="about.intro">
+                <span className="font-semibold" />
+              </Trans>
             </p>
             <p className="rounded-md bg-muted/60 px-4 py-3 text-xs/relaxed text-muted-foreground">
-              This site is a <span className="font-medium text-foreground">mini edition of Aozora built specifically for ranobe-hub</span>. It keeps
-              only the reading experience — the reflowable/manga reader, your library, reading stats, bookmarks and highlights. The dictionary,
-              text-to-speech, Anki, and Discord features of the desktop app are not included.
+              <Trans i18nKey="about.mini">
+                <span className="font-medium text-foreground" />
+              </Trans>
             </p>
-            <p className="text-xs text-muted-foreground">
-              All credit for Aozora goes to the original project. This is an unofficial web port for use inside ranobe-hub.
-            </p>
+            <p className="text-xs text-muted-foreground">{t("about.credit")}</p>
           </div>
 
           <Button variant="outline" size="sm" asChild>
             <a href={AOZORA_REPO} target="_blank" rel="noopener noreferrer">
               <GithubIcon className="size-3.5" />
-              View the original on GitHub
+              {t("about.viewOnGithub")}
             </a>
           </Button>
         </div>

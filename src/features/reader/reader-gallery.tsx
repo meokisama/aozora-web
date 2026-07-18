@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { ChevronLeft, ChevronRight, X, BookOpen, Download, ZoomIn, ZoomOut } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -23,6 +24,7 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(v, hi
  * controls. "Read from here" jumps the reader to where the image sits in the text.
  */
 export function ReaderGallery({ open, onOpenChange, illustrations, total, onSelect }: Props) {
+  const { t } = useTranslation();
   const [index, setIndex] = useState(0);
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -103,9 +105,9 @@ export function ReaderGallery({ open, onOpenChange, illustrations, total, onSele
           style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
-          <DialogPrimitive.Title className="sr-only">Illustrations</DialogPrimitive.Title>
+          <DialogPrimitive.Title className="sr-only">{t("reader.illustrations")}</DialogPrimitive.Title>
           <DialogPrimitive.Description className="sr-only">
-            Browse every illustration in the book and jump to where each one appears.
+            {t("reader.illustrationsHint")}
           </DialogPrimitive.Description>
 
           {/* Top bar: counter + actions. z-20 keeps it above the stage's nav arrows. */}
@@ -119,7 +121,7 @@ export function ReaderGallery({ open, onOpenChange, illustrations, total, onSele
                 variant="ghost"
                 size="icon"
                 onClick={() => (zoomed ? zoomBy(0) : zoomBy(2))}
-                aria-label={zoomed ? "Reset zoom" : "Zoom in"}
+                aria-label={zoomed ? t("reader.resetZoom") : t("reader.zoomIn")}
                 className="text-white/70 hover:bg-white/10 hover:text-white"
               >
                 {zoomed ? <ZoomOut className="size-4" /> : <ZoomIn className="size-4" />}
@@ -128,17 +130,17 @@ export function ReaderGallery({ open, onOpenChange, illustrations, total, onSele
                 variant="ghost"
                 size="icon"
                 onClick={download}
-                aria-label="Download image"
+                aria-label={t("reader.downloadImage")}
                 className="text-white/70 hover:bg-white/10 hover:text-white"
               >
                 <Download className="size-4" />
               </Button>
               <Button variant="ghost" onClick={() => onSelect(current.charOffset)} className="text-white/80 hover:bg-white/10 hover:text-white">
                 <BookOpen className="size-3.5" />
-                Read from here
+                {t("reader.readFromHere")}
               </Button>
               <DialogPrimitive.Close asChild>
-                <Button variant="ghost" size="icon" aria-label="Close" className="text-white/70 hover:bg-white/10 hover:text-white">
+                <Button variant="ghost" size="icon" aria-label={t("common.close")} className="text-white/70 hover:bg-white/10 hover:text-white">
                   <X className="size-4" />
                 </Button>
               </DialogPrimitive.Close>
@@ -162,7 +164,7 @@ export function ReaderGallery({ open, onOpenChange, illustrations, total, onSele
               <Button
                 variant="ghost"
                 onClick={() => setIndex(index - 1)}
-                aria-label="Previous illustration"
+                aria-label={t("reader.previousIllustration")}
                 className="absolute top-1/2 left-2 z-10 size-11 -translate-y-1/2 bg-white/5 text-white/80 hover:bg-white/15 hover:text-white"
               >
                 <ChevronLeft className="size-6" />
@@ -184,7 +186,7 @@ export function ReaderGallery({ open, onOpenChange, illustrations, total, onSele
               <Button
                 variant="ghost"
                 onClick={() => setIndex(index + 1)}
-                aria-label="Next illustration"
+                aria-label={t("reader.nextIllustration")}
                 className="absolute top-1/2 right-2 z-10 size-11 -translate-y-1/2 bg-white/5 text-white/80 hover:bg-white/15 hover:text-white"
               >
                 <ChevronRight className="size-6" />
@@ -202,7 +204,7 @@ export function ReaderGallery({ open, onOpenChange, illustrations, total, onSele
                 }}
                 type="button"
                 onClick={() => setIndex(i)}
-                aria-label={`Illustration ${i + 1}`}
+                aria-label={t("reader.illustrationN", { n: i + 1 })}
                 aria-current={i === index}
                 className={cn(
                   "h-16 shrink-0 overflow-hidden border transition-opacity",

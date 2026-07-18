@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import type { Section } from "@/lib/epub/generate-html";
 
@@ -11,11 +12,12 @@ interface Props {
 
 /** Table-of-contents sheet: lists TOC chapters and jumps to the chosen one. */
 export function ReaderToc({ open, onOpenChange, chapters, activeChapterId, onJump }: Props) {
+  const { t } = useTranslation();
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="left" className="w-72 gap-0 p-0 sm:max-w-72">
         <SheetHeader className="border-b">
-          <SheetTitle>Table of Contents</SheetTitle>
+          <SheetTitle>{t("reader.toc")}</SheetTitle>
         </SheetHeader>
         <nav className="flex-1 overflow-y-auto p-2">
           {chapters.map((ch) => (

@@ -1,17 +1,18 @@
 import { useMemo } from "react";
-import { BarChart3, BookOpen, CheckCircle2, Circle, Heart, Info, Library } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { BarChart3, BookOpen, CheckCircle2, Circle, Heart, Info, Library, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { readingStatus } from "./format";
 import { useLibraryStore } from "@/stores/library-store";
 import { useUiStore, type StatusFilter } from "@/stores/ui-store";
 import aozoraLogo from "@/assets/aozora-logo.png";
 
-const STATUS_NAV: { value: StatusFilter; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { value: "all", label: "All books", icon: Library },
-  { value: "favorites", label: "Favorites", icon: Heart },
-  { value: "reading", label: "Reading", icon: BookOpen },
-  { value: "finished", label: "Finished", icon: CheckCircle2 },
-  { value: "unread", label: "Unread", icon: Circle },
+const STATUS_NAV: { value: StatusFilter; labelKey: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { value: "all", labelKey: "sidebar.nav.allBooks", icon: Library },
+  { value: "favorites", labelKey: "sidebar.nav.favorites", icon: Heart },
+  { value: "reading", labelKey: "sidebar.nav.reading", icon: BookOpen },
+  { value: "finished", labelKey: "sidebar.nav.finished", icon: CheckCircle2 },
+  { value: "unread", labelKey: "sidebar.nav.unread", icon: Circle },
 ];
 
 /** A single sidebar nav row: icon + label on the left, a count on the right. */
@@ -56,6 +57,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
  * every page renders it unchanged.
  */
 export function LibrarySidebar() {
+  const { t } = useTranslation();
   const books = useLibraryStore((s) => s.books);
   const view = useUiStore((s) => s.view);
   const setView = useUiStore((s) => s.setView);
@@ -94,7 +96,7 @@ export function LibrarySidebar() {
           href="https://github.com/meokisama/aozora"
           target="_blank"
           rel="noopener noreferrer"
-          title="Aozora on GitHub (the original desktop app)"
+          title={t("sidebar.githubTitle")}
           className="transition-opacity hover:opacity-80"
         >
           <img src={aozoraLogo} alt="Aozora" className="h-26 w-auto object-contain" draggable={false} />
@@ -102,12 +104,12 @@ export function LibrarySidebar() {
       </div>
 
       <nav className="shrink-0 space-y-0.5 px-2 py-3">
-        <SectionLabel>Library</SectionLabel>
+        <SectionLabel>{t("sidebar.library")}</SectionLabel>
         {STATUS_NAV.map((item) => (
           <NavItem
             key={item.value}
             icon={item.icon}
-            label={item.label}
+            label={t(item.labelKey)}
             count={counts[item.value]}
             active={inLibrary && statusFilter === item.value && !authorFilter}
             onClick={() => {
@@ -120,13 +122,14 @@ export function LibrarySidebar() {
       </nav>
 
       <nav className="shrink-0 space-y-0.5 border-t px-2 py-3">
-        <NavItem icon={BarChart3} label="Statistics" active={view === "stats"} onClick={() => setView("stats")} />
-        <NavItem icon={Info} label="About" active={view === "about"} onClick={() => setView("about")} />
+        <NavItem icon={BarChart3} label={t("sidebar.statistics")} active={view === "stats"} onClick={() => setView("stats")} />
+        <NavItem icon={Settings} label={t("sidebar.settings")} active={view === "settings"} onClick={() => setView("settings")} />
+        <NavItem icon={Info} label={t("sidebar.about")} active={view === "about"} onClick={() => setView("about")} />
       </nav>
 
       {authors.length > 0 && (
         <div className="flex min-h-0 flex-1 flex-col border-t pt-3">
-          <SectionLabel>Authors</SectionLabel>
+          <SectionLabel>{t("sidebar.authors")}</SectionLabel>
           <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2 pb-3 [&::-webkit-scrollbar-thumb]:bg-transparent [&::-webkit-scrollbar-thumb]:transition-colors hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/40">
             {authors.map((a) => (
               <NavItem

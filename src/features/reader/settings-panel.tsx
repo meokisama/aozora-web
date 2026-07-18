@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { RotateCcw, Upload, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -104,6 +105,7 @@ interface Props {
 }
 
 export function ReaderSettingsPanel({ open, onOpenChange, fixedLayout = false, vertical = true }: Props) {
+  const { t } = useTranslation();
   // The parent owns only the settings shown for every book (theme, manga spread,
   // reset); the reflowable-only fields live in ReflowableFields, which reads them
   // from the store itself so they aren't threaded through as props.
@@ -125,17 +127,17 @@ export function ReaderSettingsPanel({ open, onOpenChange, fixedLayout = false, v
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-80 gap-0 p-0 sm:max-w-80">
         <SheetHeader className="border-b">
-          <SheetTitle>Reader Settings</SheetTitle>
+          <SheetTitle>{t("reader.settings")}</SheetTitle>
         </SheetHeader>
 
         <div className="flex-1 space-y-6 overflow-y-auto p-4">
-          <Field label="Theme">
+          <Field label={t("reader.theme")}>
             <ToggleGroup {...segmented} value={theme} onValueChange={guard(setTheme)}>
               <ToggleGroupItem value="sepia" className="flex-1">
-                Sepia
+                {t("reader.sepia")}
               </ToggleGroupItem>
               <ToggleGroupItem value="dark" className="flex-1">
-                Dark
+                {t("reader.dark")}
               </ToggleGroupItem>
             </ToggleGroup>
           </Field>
@@ -144,11 +146,11 @@ export function ReaderSettingsPanel({ open, onOpenChange, fixedLayout = false, v
               font/furigana/flow settings don't apply to image pages. */}
           {fixedLayout ? (
             <>
-              <Field label="Reading Mode">
+              <Field label={t("reader.readingModeGroup")}>
                 <ToggleGroup {...segmented} value={mangaReadingMode} onValueChange={guard(setMangaReadingMode)}>
                   {MANGA_READING_MODES.map((m) => (
                     <ToggleGroupItem key={m.value} value={m.value} className="flex-1">
-                      {m.label}
+                      {t(`options.mangaReading.${m.value}`)}
                     </ToggleGroupItem>
                   ))}
                 </ToggleGroup>
@@ -157,29 +159,29 @@ export function ReaderSettingsPanel({ open, onOpenChange, fixedLayout = false, v
               {/* Paginated flips spreads; continuous scrolls a single strip whose
                   axis and page size are adjustable. */}
               {mangaReadingMode === "paginated" ? (
-                <Field label="Page Layout">
+                <Field label={t("reader.pageLayout")}>
                   <ToggleGroup {...segmented} value={mangaSpread} onValueChange={guard(setMangaSpread)}>
                     {MANGA_SPREAD_MODES.map((m) => (
                       <ToggleGroupItem key={m.value} value={m.value} className="flex-1">
-                        {m.label}
+                        {t(`options.spread.${m.value}`)}
                       </ToggleGroupItem>
                     ))}
                   </ToggleGroup>
                 </Field>
               ) : (
                 <>
-                  <Field label="Scroll Direction">
+                  <Field label={t("reader.scrollDirection")}>
                     <ToggleGroup {...segmented} value={mangaScrollDirection} onValueChange={guard(setMangaScrollDirection)}>
                       {MANGA_SCROLL_DIRECTIONS.map((m) => (
                         <ToggleGroupItem key={m.value} value={m.value} className="flex-1">
-                          {m.label}
+                          {t(`options.mangaScroll.${m.value}`)}
                         </ToggleGroupItem>
                       ))}
                     </ToggleGroup>
                   </Field>
 
                   <SmoothSlider
-                    label={mangaScrollDirection === "horizontal" ? "Page Height" : "Page Width"}
+                    label={mangaScrollDirection === "horizontal" ? t("reader.pageHeight") : t("reader.pageWidth")}
                     value={mangaStripWidth}
                     min={MANGA_STRIP_WIDTH_RANGE.min}
                     max={MANGA_STRIP_WIDTH_RANGE.max}
@@ -189,7 +191,7 @@ export function ReaderSettingsPanel({ open, onOpenChange, fixedLayout = false, v
                   />
 
                   <SmoothSlider
-                    label="Page Gap"
+                    label={t("reader.pageGap")}
                     value={mangaStripGap}
                     min={MANGA_STRIP_GAP_RANGE.min}
                     max={MANGA_STRIP_GAP_RANGE.max}
@@ -208,7 +210,7 @@ export function ReaderSettingsPanel({ open, onOpenChange, fixedLayout = false, v
         <div className="p-4">
           <Button variant="outline" className="w-full" onClick={reset}>
             <RotateCcw className="size-3.5" />
-            Reset to defaults
+            {t("reader.resetDefaults")}
           </Button>
         </div>
       </SheetContent>
@@ -219,6 +221,7 @@ export function ReaderSettingsPanel({ open, onOpenChange, fixedLayout = false, v
 /** The settings only meaningful for reflowable (text) books. Reads its own store
  *  slice; `vertical` (the effective direction) gates the horizontal-only rows. */
 function ReflowableFields({ vertical }: { vertical: boolean }) {
+  const { t } = useTranslation();
   const fontSize = useSettingsStore((s) => s.fontSize);
   const lineHeight = useSettingsStore((s) => s.lineHeight);
   const fontFamily = useSettingsStore((s) => s.fontFamily);
@@ -248,39 +251,39 @@ function ReflowableFields({ vertical }: { vertical: boolean }) {
     try {
       await importFont(file);
     } catch {
-      toast.error("Couldn't load that font. Use a .ttf, .otf, .woff or .woff2 file.");
+      toast.error(t("reader.fontLoadError"));
     }
   };
 
   return (
     <>
-      <Field label="Writing Mode">
+      <Field label={t("reader.writingMode")}>
         <ToggleGroup {...segmented} value={writingMode} onValueChange={guard(setWritingMode)}>
           {WRITING_MODES.map((m) => (
             <ToggleGroupItem key={m.value} value={m.value} className="flex-1">
-              {m.label}
+              {t(`options.writing.${m.value}`)}
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
       </Field>
 
-      <Field label="Reading Mode">
+      <Field label={t("reader.readingMode")}>
         <ToggleGroup {...segmented} value={readingMode} onValueChange={guard(setReadingMode)}>
           <ToggleGroupItem value="paginated" className="flex-1">
-            Paginated
+            {t("reader.paginated")}
           </ToggleGroupItem>
           <ToggleGroupItem value="continuous" className="flex-1">
-            Continuous
+            {t("reader.continuous")}
           </ToggleGroupItem>
         </ToggleGroup>
       </Field>
 
       {!vertical && readingMode === "paginated" && (
-        <Field label="Columns per Page">
+        <Field label={t("reader.columnsPerPage")}>
           <ToggleGroup {...segmented} value={String(pageColumns)} onValueChange={(v: string) => v && setPageColumns(Number(v))}>
             {PAGE_COLUMNS_OPTIONS.map((o) => (
               <ToggleGroupItem key={o.value} value={String(o.value)} className="flex-1">
-                {o.label}
+                {o.value === 0 ? t("options.pageColumns.auto") : o.label}
               </ToggleGroupItem>
             ))}
           </ToggleGroup>
@@ -289,7 +292,7 @@ function ReflowableFields({ vertical }: { vertical: boolean }) {
 
       {!vertical && readingMode === "continuous" && (
         <SmoothSlider
-          label="Side Margin"
+          label={t("reader.sideMargin")}
           value={sideMargin}
           min={SIDE_MARGIN_RANGE.min}
           max={SIDE_MARGIN_RANGE.max}
@@ -299,7 +302,7 @@ function ReflowableFields({ vertical }: { vertical: boolean }) {
         />
       )}
 
-      <Field label="Furigana">
+      <Field label={t("reader.furigana")}>
         <Select value={furiganaMode} onValueChange={guard(setFuriganaMode)}>
           <SelectTrigger className="w-full">
             <SelectValue />
@@ -307,14 +310,14 @@ function ReflowableFields({ vertical }: { vertical: boolean }) {
           <SelectContent>
             {FURIGANA_MODES.map((m) => (
               <SelectItem key={m.value} value={m.value}>
-                {m.label}
+                {t(`options.furigana.${m.value}`)}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </Field>
 
-      <Field label="Font">
+      <Field label={t("reader.font")}>
         <div className="flex items-center gap-2">
           <Select value={fontFamily} onValueChange={guard(setFontFamily)}>
             <SelectTrigger className="flex-1">
@@ -338,7 +341,7 @@ function ReflowableFields({ vertical }: { vertical: boolean }) {
             </SelectContent>
           </Select>
           <input ref={fileRef} type="file" accept=".ttf,.otf,.woff,.woff2" className="hidden" onChange={onPickFont} />
-          <Button variant="outline" size="icon" className="shrink-0" onClick={() => fileRef.current?.click()} aria-label="Import font">
+          <Button variant="outline" size="icon" className="shrink-0" onClick={() => fileRef.current?.click()} aria-label={t("reader.importFont")}>
             <Upload className="size-3.5" />
           </Button>
         </div>
@@ -355,7 +358,7 @@ function ReflowableFields({ vertical }: { vertical: boolean }) {
                   size="icon-xs"
                   className="shrink-0 text-muted-foreground hover:text-destructive"
                   onClick={() => removeFont(f.id)}
-                  aria-label={`Remove ${f.label}`}
+                  aria-label={t("reader.removeFont", { name: f.label })}
                 >
                   <Trash2 className="size-3.5" />
                 </Button>
@@ -366,7 +369,7 @@ function ReflowableFields({ vertical }: { vertical: boolean }) {
       </Field>
 
       <SmoothSlider
-        label="Font Size"
+        label={t("reader.fontSize")}
         value={fontSize}
         min={FONT_SIZE_RANGE.min}
         max={FONT_SIZE_RANGE.max}
@@ -376,7 +379,7 @@ function ReflowableFields({ vertical }: { vertical: boolean }) {
       />
 
       <SmoothSlider
-        label="Line Height"
+        label={t("reader.lineHeight")}
         value={lineHeight}
         min={LINE_HEIGHT_RANGE.min}
         max={LINE_HEIGHT_RANGE.max}

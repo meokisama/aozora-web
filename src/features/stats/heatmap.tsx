@@ -1,10 +1,8 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { buildHeatmapWeeks, intensityLevel, formatDuration, formatCompact } from "@/lib/stats/aggregate";
 import type { DayValue, HeatmapCell } from "@/lib/stats/aggregate";
-
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const WEEKDAYS = ["", "Mon", "", "Wed", "", "Fri", ""];
 
 // 0 = idle, 1–4 = increasing intensity. Tailwind needs the classes spelled out
 // (no interpolation) so the JIT keeps them.
@@ -25,6 +23,9 @@ interface HeatmapProps {
 }
 
 export function Heatmap({ year, valueByDay, metric, goalChars = 0, selectedDay, onSelectDay }: HeatmapProps) {
+  const { t } = useTranslation();
+  const months = t("heatmap.months", { returnObjects: true }) as string[];
+  const weekdays = t("heatmap.weekdays", { returnObjects: true }) as string[];
   const weeks = useMemo(() => buildHeatmapWeeks(year, valueByDay), [year, valueByDay]);
 
   const valueOf = (cell: HeatmapCell) => (metric === "minutes" ? cell.ms / 60000 : cell.chars);
@@ -44,22 +45,22 @@ export function Heatmap({ year, valueByDay, metric, goalChars = 0, selectedDay, 
       const m = Number(first.day.slice(5, 7)) - 1;
       if (m !== last) {
         last = m;
-        return MONTHS[m];
+        return months[m];
       }
       return "";
     });
-  }, [weeks]);
+  }, [weeks, months]);
 
   const tip = (cell: HeatmapCell) => {
-    const unit = cell.chars === 1 ? "char" : "chars";
-    return `${cell.day} · ${formatCompact(cell.chars)} ${unit} · ${formatDuration(cell.ms)} · ${cell.sessions} session${cell.sessions === 1 ? "" : "s"}`;
+    const unit = t(cell.chars === 1 ? "heatmap.unitChar" : "heatmap.unitChars");
+    return t("heatmap.tooltip", { day: cell.day, chars: formatCompact(cell.chars), unit, dur: formatDuration(cell.ms), count: cell.sessions });
   };
 
   return (
     <div className="flex gap-1.5 overflow-x-auto pb-1">
       {/* Weekday labels down the left edge. */}
       <div className="mt-4.5 flex shrink-0 flex-col gap-0.75 pr-0.5">
-        {WEEKDAYS.map((d, i) => (
+        {weekdays.map((d, i) => (
           <span key={i} className="h-2.5 text-[9px] leading-2.5 text-muted-foreground/70">
             {d}
           </span>
@@ -109,13 +110,14 @@ export function Heatmap({ year, valueByDay, metric, goalChars = 0, selectedDay, 
 
 /** "Less ▢▢▢▢▢ More" legend matching the heatmap shades. */
 export function HeatmapLegend() {
+  const { t } = useTranslation();
   return (
     <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-      <span>Less</span>
+      <span>{t("heatmap.less")}</span>
       {LEVEL_CLASS.map((c, i) => (
         <span key={i} className={cn("size-2.5 rounded-[2px]", c)} />
       ))}
-      <span>More</span>
+      <span>{t("heatmap.more")}</span>
     </div>
   );
 }
