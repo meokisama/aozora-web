@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Images, List, Loader2, Maximize, Minimize, Search, Settings } from "lucide-react";
+import { ArrowLeft, Bookmark, Highlighter, Images, List, Loader2, Maximize, Minimize, Search, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useReaderStore } from "@/stores/reader-store";
 import { saveProgress } from "@/platform/progress";
@@ -26,7 +26,14 @@ import { chapterIndexAt } from "@/lib/reader/chapters";
 import { FootnotePopup } from "./footnote-popup";
 import { collectFootnotes } from "@/lib/reader/footnotes";
 import { useReaderSearch } from "./hooks/use-reader-search";
-import { readBookBlob } from "@/platform/books";
+import { ReaderBookmarks } from "./reader-bookmarks";
+import { ReaderAnnotations } from "./reader-annotations";
+import { AnnotationPopover } from "./annotation-popover";
+import { AnnotationTrigger } from "./annotation-trigger";
+import { useBookmarks } from "./hooks/use-bookmarks";
+import { useAnnotations } from "./hooks/use-annotations";
+import { clearAnnotationHighlights, DEFAULT_ANNOTATION_COLOR } from "@/lib/reader/annotations";
+import { readBookBlob, type DownloadProgress } from "@/platform/books";
 import { toggleFullscreen } from "@/platform/fullscreen";
 
 const FURIGANA_CLASSES = ["aoz-furigana-hide", "aoz-furigana-partial", "aoz-furigana-toggle", "aoz-furigana-full"];
@@ -57,6 +64,29 @@ function bindRubyReveal(root: Element | null | undefined) {
     if (mode === "toggle") ruby.classList.toggle("reveal-rt");
     else ruby.classList.add("reveal-rt"); // partial, full: reveal and keep
   });
+}
+
+const formatMB = (bytes: number) => `${(bytes / 1_048_576).toFixed(1)} MB`;
+
+/** Download overlay for large epubs: a determinate bar + "X% • loaded / total"
+ *  when Content-Length is known, else an indeterminate bar + MB downloaded. */
+function LoadingProgress({ download }: { download: DownloadProgress }) {
+  const { loaded, total } = download;
+  const pct = total ? Math.min(100, Math.round((loaded / total) * 100)) : null;
+  return (
+    <div className="flex w-56 max-w-[70vw] flex-col items-center gap-3">
+      <Loader2 className="size-5 animate-spin text-muted-foreground" />
+      <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
+        <div
+          className={`h-full bg-muted-foreground/70 ${pct === null ? "w-1/3 animate-pulse" : "transition-[width] duration-200 ease-out"}`}
+          style={pct === null ? undefined : { width: `${pct}%` }}
+        />
+      </div>
+      <p className="text-xs tabular-nums text-muted-foreground">
+        {pct === null ? `Loading… ${formatMB(loaded)}` : `${pct}% · ${formatMB(loaded)} / ${formatMB(total!)}`}
+      </p>
+    </div>
+  );
 }
 
 /**
@@ -102,6 +132,8 @@ export function ReaderView() {
   const footnotesRef = useRef<Map<string, string>>(new Map()); // id → note inner HTML
 
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [bookTitle, setBookTitle] = useState(""); // real EPUB <dc:title>, resolved after parse
+  const [download, setDownload] = useState<DownloadProgress | null>(null); // null = not downloading (cached or done)
   const [parseToken, setParseToken] = useState(0); // bumped when parsed content is ready
   const [fixedLayout, setFixedLayout] = useState(false); // manga / fixed-layout book
   // Effective writing direction (see resolveVertical); drives the host overflow axis.
@@ -112,6 +144,8 @@ export function ReaderView() {
   const [tocOpen, setTocOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
+  const [bookmarksOpen, setBookmarksOpen] = useState(false);
+  const [annotationsOpen, setAnnotationsOpen] = useState(false);
   const [illustrations, setIllustrations] = useState<Illustration[]>([]);
   const [footnote, setFootnote] = useState<{ html: string; anchor: DOMRect } | null>(null);
 
@@ -164,6 +198,40 @@ export function ReaderView() {
     persist();
   }, [persist]);
 
+  const clearFootnote = useCallback(() => setFootnote(null), []);
+  // The web port has no hover dictionary, so there's no lookup popup to clear;
+  // the highlights hook still expects the callback, so pass a stable no-op.
+  const clearLookup = useCallback(() => {}, []);
+
+  // Text highlights + notes: list, pending-selection trigger, and colour/note
+  // editor. Char-offset anchored, so the shell repaints on content rebuild and
+  // paginated section swaps via the returned repaintAnnotations.
+  const {
+    annotations,
+    annoPopover,
+    annoTrigger,
+    repaintAnnotations,
+    closeAnnoPopover,
+    clearAnnoTrigger,
+    setPopoverNote,
+    handleAnnoColor,
+    handleRemoveAnnotation,
+    openAnnoEditor,
+    handleMouseUp,
+    openHighlightAtPoint,
+  } = useAnnotations({
+    book,
+    parseToken,
+    readingMode,
+    hostRef,
+    modeRef,
+    controllerRef,
+    readyRef,
+    totalRef,
+    clearLookup,
+    clearFootnote,
+  });
+
   // Receives position updates from the paginated controller.
   const onPagedChange = useCallback(
     (state: PaginatedState) => {
@@ -171,10 +239,13 @@ export function ReaderView() {
       setCurrentChar(state.char);
       setPageInfo({ page: state.page, totalPages: state.totalPages });
       setFootnote(null);
+      clearAnnoTrigger(); // the pending selection flipped away
+      closeAnnoPopover(); // its anchored selection flipped away
+      repaintAnnotations(); // the new section's highlights (previous section's cleared)
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = setTimeout(persist, 800);
     },
-    [persist],
+    [persist, repaintAnnotations, closeAnnoPopover, clearAnnoTrigger],
   );
 
   // Position updates from the fixed-layout viewer: a 0-based page ordinal. Progress
@@ -195,6 +266,7 @@ export function ReaderView() {
   // Jumps to a character offset, in whichever mode is active.
   const jumpToChar = useCallback(
     (char: number) => {
+      setBookmarksOpen(false);
       charRef.current = char;
       if (modeRef.current === "fixed") {
         fixedRef.current?.jumpToOrdinal(char); // emits onChange → updates state + saves
@@ -212,8 +284,14 @@ export function ReaderView() {
     [commitContinuousChar],
   );
 
-  // In-book search hangs off the live position refs and jumpToChar; it owns its
-  // own query/results state (reset per book internally).
+  // Bookmarks and in-book search hang off the live position refs and jumpToChar;
+  // each owns its own list/query state (loaded + reset per book internally).
+  const { bookmarks, nameInput, setNameInput, computeDefaultName, addBookmark, removeBookmark } = useBookmarks({
+    book,
+    chapters,
+    totalRef,
+    charRef,
+  });
   const { searchOpen, setSearchOpen, searchQuery, runSearch, searchResults, searchDisplay, jumpToSearchResult } = useReaderSearch({
     book,
     chapters,
@@ -226,7 +304,7 @@ export function ReaderView() {
     jumpToChar,
   });
 
-  panelOpenRef.current = tocOpen || settingsOpen || searchOpen || galleryOpen;
+  panelOpenRef.current = tocOpen || settingsOpen || bookmarksOpen || searchOpen || galleryOpen || annotationsOpen;
 
   // Expose the reader area's pixel size as inherited CSS vars so illustrations
   // can be capped against it, and re-paginate the page-flip reader on resize.
@@ -261,6 +339,8 @@ export function ReaderView() {
     parsedRef.current = null;
     totalRef.current = 0;
     charRef.current = 0;
+    setBookTitle("");
+    setDownload(null);
     setCurrentChar(0);
     setPageInfo(null);
     setFixedLayout(false);
@@ -272,14 +352,23 @@ export function ReaderView() {
       try {
         let parsed = await getCachedBook(book.id, book.key);
         if (!parsed) {
-          const blob = await readBookBlob(book);
+          // Stream download progress (dominant wait for large epubs); once the
+          // bytes are in, clearing it flips the overlay to the "Processing…"
+          // (decrypt + parse) phase, which has no granular progress.
+          const blob = await readBookBlob(book, (p) => {
+            if (!cancelled) setDownload(p);
+          });
+          if (cancelled) return;
+          setDownload(null);
           parsed = await parseBook(blob);
           await putCachedBook(book.id, parsed, book.key);
         }
         if (cancelled) return;
 
-        // Reflect the real EPUB title in the browser tab once known; the
-        // original document title is restored on unmount/book change.
+        // Reflect the real EPUB title in the browser tab and the reader header
+        // once known; the original document title is restored on unmount/book
+        // change. Falls back to the filename-derived title if the EPUB has none.
+        setBookTitle(parsed.title || book.title);
         if (parsed.title) document.title = parsed.title;
 
         const { html, objectUrls, keyToUrl } = buildReaderHtml(parsed.elementHtml, parsed.blobs);
@@ -376,6 +465,7 @@ export function ReaderView() {
         if (cancelled) return;
         readyRef.current = true;
         setStatus("ready");
+        repaintAnnotations();
       })();
     } else {
       shadow.innerHTML = `<style data-aoz-base>${continuousStyles(vert)}</style><style>${parsed.styleSheet}</style><div class="aozora-content">${html}</div>`;
@@ -392,6 +482,7 @@ export function ReaderView() {
         setCurrentChar(charRef.current);
         readyRef.current = true;
         setStatus("ready");
+        repaintAnnotations();
       });
     }
 
@@ -402,6 +493,7 @@ export function ReaderView() {
       persist();
       readyRef.current = false;
       clearSearchHighlight();
+      clearAnnotationHighlights();
       controllerRef.current?.destroy();
       controllerRef.current = null;
       if (shadow) shadow.innerHTML = "";
@@ -556,7 +648,12 @@ export function ReaderView() {
       } else if (id && jumpToReference(id)) {
         e.preventDefault();
       }
+      return;
     }
+
+    // Not a link: hand off to the highlights hook, which opens the editor if the
+    // click landed on an existing highlight (and no selection is active).
+    openHighlightAtPoint(e);
   };
 
   // A content rebuild or mode switch invalidates the open note anchor box.
@@ -590,7 +687,9 @@ export function ReaderView() {
         <Button variant="ghost" size="icon" onClick={close} aria-label="Back to library">
           <ArrowLeft className="size-4" />
         </Button>
-        <p className="min-w-0 truncate text-xs font-medium tracking-tight">【{book.title}】</p>
+        <p className="min-w-0 truncate text-xs font-medium tracking-tight">
+          {status === "loading" ? "Loading..." : `【${bookTitle || book.title}】`}
+        </p>
         {total > 0 && (
           <>
             <div className="h-4 w-px shrink-0 bg-border" />
@@ -620,6 +719,20 @@ export function ReaderView() {
         <Button variant="ghost" size="icon" onClick={() => setGalleryOpen(true)} disabled={!illustrations.length} aria-label="Illustrations">
           <Images className="size-4" />
         </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => {
+            setNameInput(computeDefaultName());
+            setBookmarksOpen(true);
+          }}
+          aria-label="Bookmarks"
+        >
+          <Bookmark className="size-4" />
+        </Button>
+        <Button variant="ghost" size="icon" onClick={() => setAnnotationsOpen(true)} disabled={!total || fixedLayout} aria-label="Highlights">
+          <Highlighter className="size-4" />
+        </Button>
         <Button variant="ghost" size="icon" onClick={toggleFullscreen} aria-label={fullscreen ? "Exit full screen" : "Full screen"}>
           {fullscreen ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
         </Button>
@@ -633,6 +746,8 @@ export function ReaderView() {
           <div className="absolute inset-0 flex items-center justify-center bg-background">
             {status === "error" ? (
               <p className="text-sm text-muted-foreground">Could not open this book.</p>
+            ) : download ? (
+              <LoadingProgress download={download} />
             ) : (
               <Loader2 className="size-5 animate-spin text-muted-foreground" />
             )}
@@ -658,6 +773,7 @@ export function ReaderView() {
             onWheel={handleWheel}
             onScroll={handleScroll}
             onClick={handleContentClick}
+            onMouseUp={handleMouseUp}
             className={
               paged
                 ? // Padding lives on the host (outside the shadow scroller) so it
@@ -671,9 +787,39 @@ export function ReaderView() {
           />
         )}
         <FootnotePopup html={footnote?.html ?? null} anchor={footnote?.anchor ?? null} onClose={() => setFootnote(null)} />
+        <AnnotationTrigger point={annoTrigger?.point ?? null} onPick={openAnnoEditor} onClose={clearAnnoTrigger} />
+        <AnnotationPopover
+          anchor={annoPopover?.anchor ?? null}
+          color={annoPopover?.color ?? DEFAULT_ANNOTATION_COLOR}
+          note={annoPopover?.note ?? ""}
+          isNew={!annoPopover?.id}
+          onColor={handleAnnoColor}
+          onNote={setPopoverNote}
+          onDelete={annoPopover?.id ? () => handleRemoveAnnotation(annoPopover.id!) : undefined}
+          onClose={closeAnnoPopover}
+        />
       </div>
 
       <ReaderToc open={tocOpen} onOpenChange={setTocOpen} chapters={chapters} activeChapterId={activeChapterId} onJump={handleJump} />
+
+      <ReaderBookmarks
+        open={bookmarksOpen}
+        onOpenChange={setBookmarksOpen}
+        bookmarks={bookmarks}
+        nameInput={nameInput}
+        onNameInputChange={setNameInput}
+        onAdd={addBookmark}
+        onJump={jumpToChar}
+        onRemove={removeBookmark}
+      />
+
+      <ReaderAnnotations
+        open={annotationsOpen}
+        onOpenChange={setAnnotationsOpen}
+        annotations={annotations}
+        onJump={jumpToChar}
+        onRemove={handleRemoveAnnotation}
+      />
 
       <ReaderSearch
         open={searchOpen}
