@@ -248,7 +248,6 @@
     "githubTitle": "View the original Aozora on GitHub",
     "intro": "<0>Aozora</0> is a desktop EPUB reader for Japanese learners — full-text search, a Yomitan pop-up dictionary, Anki mining, VOICEVOX text-to-speech, reading statistics, and more, wrapped around a reflowable + manga reader.",
     "mini": "This site is a <0>mini edition of Aozora built specifically for Ranobe Hub</0>. It keeps only the reading experience — the reflowable/manga reader, your library, reading stats, bookmarks and highlights. The dictionary, text-to-speech, Anki, and Discord features of the desktop app are not included.",
-    "credit": "All credit for Aozora goes to the original project. This is an unofficial web port for use inside ranobe-hub.",
     "viewOnGithub": "View the original on GitHub"
   },
   "options": {

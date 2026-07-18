@@ -39,7 +39,6 @@ export function AboutView() {
                 <span className="font-medium text-foreground" />
               </Trans>
             </p>
-            <p className="text-xs text-muted-foreground">{t("about.credit")}</p>
           </div>
 
           <Button variant="outline" size="sm" asChild>

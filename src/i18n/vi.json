@@ -248,7 +248,6 @@
     "githubTitle": "Xem Aozora gốc trên GitHub",
     "intro": "<0>Aozora</0> là trình đọc EPUB trên desktop dành cho người học tiếng Nhật với các tính năng như tìm kiếm toàn văn, từ điển pop-up Yomitan, thêm flashcard Anki, chuyển văn bản thành giọng nói VOICEVOX, thống kê đọc, và nhiều tính năng khác.",
     "mini": "Trang này là <0>phiên bản mini của Aozora được xây dựng riêng cho Ranobe Hub</0>. Nó chỉ giữ lại trải nghiệm đọc — trình đọc reflowable/manga, thư viện, thống kê đọc, dấu trang và đánh dấu. Các tính năng từ điển, chuyển văn bản thành giọng nói, Anki và Discord RP của ứng dụng desktop không được bao gồm.",
-    "credit": "Mọi công lao của Aozora thuộc về dự án gốc. Đây là bản port web không chính thức để dùng trong ranobe-hub.",
     "viewOnGithub": "Xem bản gốc trên GitHub"
   },
   "options": {
