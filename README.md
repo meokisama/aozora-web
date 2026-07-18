@@ -13,13 +13,15 @@ host that serves epubs — e.g. replacing a bundled bibi reader. See
 
 Opening `/<page>?book=<name>`:
 
-1. If `<name>` is an absolute URL → fetch it directly.
-2. Otherwise request a short-lived token `GET <API_BASE>/reader/token?book=<name>`,
-   then fetch `<BOOKSHELF_BASE>/<name>.epub` with header `X-Reader-Token`.
+1. If `<name>` is an absolute URL → fetch it directly (plaintext, no token/key).
+2. Otherwise request `GET <API_BASE>/reader/token?book=<name>` → `{ token, key }`,
+   then fetch `<BOOKSHELF_BASE>/<name>.epub` with header `X-Reader-Token`. The
+   host serves it AES-256-GCM encrypted; the reader decrypts it in memory with
+   `key` (WebCrypto) so the bytes on the wire aren't a usable `.epub`.
 3. Parse + render (text or fixed-layout), restoring saved progress from IndexedDB.
 
-The raw `.epub` is fetched in-memory; reading progress is stored per book id in
-IndexedDB.
+The `.epub` is fetched (and decrypted) in-memory; reading progress is stored per
+book id in IndexedDB. WebCrypto needs a secure context (HTTPS or localhost).
 
 ## Config (build-time)
 

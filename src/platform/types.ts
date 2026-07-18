@@ -11,4 +11,7 @@ export interface WebBook extends Book {
   url: string;
   /** Optional bearer token sent as the `X-Reader-Token` header. */
   token?: string;
+  /** Optional base64 AES-256-GCM key to decrypt the host-served (encrypted)
+   *  epub. Absent for absolute/external URLs, which are fetched as plaintext. */
+  key?: string;
 }

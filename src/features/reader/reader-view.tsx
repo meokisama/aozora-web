@@ -250,6 +250,7 @@ export function ReaderView() {
   useEffect(() => {
     if (!book) return;
     let cancelled = false;
+    const prevDocTitle = document.title;
 
     readyRef.current = false;
     anchorsRef.current = { anchors: [], total: 0 };
@@ -269,13 +270,17 @@ export function ReaderView() {
     (async () => {
       setStatus("loading");
       try {
-        let parsed = await getCachedBook(book.id);
+        let parsed = await getCachedBook(book.id, book.key);
         if (!parsed) {
           const blob = await readBookBlob(book);
           parsed = await parseBook(blob);
-          await putCachedBook(book.id, parsed);
+          await putCachedBook(book.id, parsed, book.key);
         }
         if (cancelled) return;
+
+        // Reflect the real EPUB title in the browser tab once known; the
+        // original document title is restored on unmount/book change.
+        if (parsed.title) document.title = parsed.title;
 
         const { html, objectUrls, keyToUrl } = buildReaderHtml(parsed.elementHtml, parsed.blobs);
         objectUrlsRef.current = objectUrls;
@@ -303,6 +308,7 @@ export function ReaderView() {
 
     return () => {
       cancelled = true;
+      document.title = prevDocTitle;
       objectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
       objectUrlsRef.current = [];
     };

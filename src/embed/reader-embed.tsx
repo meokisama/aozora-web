@@ -22,15 +22,15 @@ function resolveEpubUrl(book: string): string {
   return `${BOOKSHELF_BASE}/${name}`;
 }
 
-/** Requests a short-lived access token for a host-served book (skipped for
- *  absolute external URLs, which the host doesn't gate). */
-async function fetchToken(book: string): Promise<string | undefined> {
-  if (isAbsolute(book)) return undefined;
+/** Requests a short-lived access token + decryption key for a host-served book
+ *  (skipped for absolute external URLs, which the host doesn't gate/encrypt). */
+async function fetchToken(book: string): Promise<{ token?: string; key?: string }> {
+  if (isAbsolute(book)) return {};
   const res = await fetch(`${API_BASE}/reader/token?book=${encodeURIComponent(book)}`);
   if (!res.ok) throw new Error(`token ${res.status}`);
-  const data = (await res.json()) as { token?: string };
+  const data = (await res.json()) as { token?: string; key?: string };
   if (!data.token) throw new Error("no token");
-  return data.token;
+  return { token: data.token, key: data.key };
 }
 
 /**
@@ -63,7 +63,7 @@ export function ReaderEmbed() {
         return;
       }
       try {
-        const token = await fetchToken(book);
+        const { token, key } = await fetchToken(book);
         if (cancelled) return;
         const id = `embed:${book}`;
         const p = await getProgress(id);
@@ -85,6 +85,7 @@ export function ReaderEmbed() {
           coverDataUrl: null,
           url: resolveEpubUrl(book),
           token,
+          key,
         };
         useReaderStore.getState().open(webBook);
       } catch (err) {

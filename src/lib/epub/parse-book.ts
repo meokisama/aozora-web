@@ -1,7 +1,7 @@
 import { extractEpub } from "./extract";
 import { generateHtml, PREPEND, type Section } from "./generate-html";
 import { generateStyleSheet } from "./generate-stylesheet";
-import { getBookViewport, getPageProgressionDirection, getRenditionLayout, getRenditionSpread, getSpinePageSpreads, isFixedLayout, type PageSpread, type RenditionSpread } from "./opf";
+import { firstText, getBookViewport, getMetadata, getPageProgressionDirection, getRenditionLayout, getRenditionSpread, getSpinePageSpreads, isFixedLayout, type PageSpread, type RenditionSpread } from "./opf";
 import { buildSpreads } from "@/lib/reader/spreads";
 
 export interface FixedLayoutPage {
@@ -24,6 +24,8 @@ export interface ParsedBook {
   bookViewport: { width: number; height: number } | null;
   spreadPairs: string[][] | null;
   renditionSpread: RenditionSpread;
+  /** `<dc:title>` from the OPF metadata; empty when the EPUB declares none. */
+  title: string;
 }
 
 /**
@@ -46,6 +48,7 @@ export async function parseBook(blob: Blob): Promise<ParsedBook> {
   }
 
   const elementHtml = element.innerHTML;
+  const title = firstText(getMetadata(contents)?.["dc:title"]) || "";
   const ppd = getPageProgressionDirection(contents);
   // Vertical (tategaki) detection. PPD=rtl and the 電書協 `vrtl` class are strong
   // signals. Calibre/KFX conversions instead declare `writing-mode: vertical-rl`
@@ -104,5 +107,6 @@ export async function parseBook(blob: Blob): Promise<ParsedBook> {
     bookViewport,
     spreadPairs,
     renditionSpread,
+    title,
   };
 }
