@@ -399,10 +399,15 @@ export function ReaderView() {
         // change. Falls back to the filename-derived title if the EPUB has none.
         setBookTitle(parsed.title || book.title);
         if (parsed.title) document.title = parsed.title;
-        // Refresh the host book's library record with its real title once parsed
-        // (the record was auto-added under the `?book=` filename on open).
-        if (book.source !== "local" && parsed.title) {
-          void upsertHostBook({ name: book.filePath, title: parsed.title });
+        // Refresh the host book's library record with its real title/author once
+        // parsed (the record was auto-added under the `?book=` filename on open,
+        // with no metadata — so the author powers the sidebar + per-book stats).
+        if (book.source !== "local" && (parsed.title || parsed.author)) {
+          void upsertHostBook({
+            name: book.filePath,
+            title: parsed.title || undefined,
+            author: parsed.author || undefined,
+          });
         }
 
         const { html, objectUrls, keyToUrl } = buildReaderHtml(parsed.elementHtml, parsed.blobs);

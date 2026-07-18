@@ -16,9 +16,11 @@ const STORE = "books";
 // v3: added renditionSpread (book-level OPF spread mode) for the fixed-layout viewer.
 // v4: added title (dc:title) so the reader can show the real book title in the browser tab.
 // v5: cache entries for host books are now encrypted (stored as a Blob).
+// v6: added author (dc:creator) so host books populate their library record's
+//     author (powers the sidebar author browser + per-book stats).
 // Pre-release policy is forward-only — drop the old cache rather than migrate, so
 // previously-opened books re-parse and pick up the new fields/format.
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {

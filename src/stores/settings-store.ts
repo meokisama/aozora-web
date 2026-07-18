@@ -9,7 +9,7 @@ import { persist } from "zustand/middleware";
 
 /** Built-in reader fonts. The active font (`SettingsState.fontFamily`) is a
  *  `BuiltinFont` key or a user-imported font's id, so the field is typed `string`. */
-export type BuiltinFont = "mincho" | "noto-serif" | "noto-sans" | "gyosho";
+export type BuiltinFont = "mincho" | "noto-serif" | "noto-sans" | "gyosho" | "merriweather";
 export type FontFamily = string;
 export type ThemeName = "sepia" | "dark";
 export type ReadingMode = "continuous" | "paginated";
@@ -27,6 +27,9 @@ export const FONT_STACKS: Record<BuiltinFont, string> = {
   "noto-serif": "'Noto Serif JP', serif",
   "noto-sans": "'Noto Sans JP', sans-serif",
   gyosho: "'EPGyosho', 'Noto Serif JP', 'Yu Mincho', YuMincho, serif",
+  // Latin serif for Vietnamese (Hako) books; falls back to the JP serif for any
+  // stray CJK so mixed content still renders.
+  merriweather: "'Merriweather', 'Noto Serif JP', serif",
 };
 
 /** Built-in options for the settings-panel Font dropdown (user-imported fonts
@@ -36,6 +39,7 @@ export const FONT_FAMILIES: { value: BuiltinFont; label: string }[] = [
   { value: "noto-sans", label: "Noto Sans JP" },
   { value: "mincho", label: "Yu Mincho" },
   { value: "gyosho", label: "Epson" },
+  { value: "merriweather", label: "Merriweather" },
 ];
 
 /**
@@ -135,7 +139,22 @@ export const WRITING_MODES: { value: WritingMode; label: string }[] = [
   { value: "vertical", label: "Vertical" },
 ];
 
+/**
+ * Reader settings are split into independent profiles so books in different
+ * scripts keep their own display prefs. Opening a book activates its profile
+ * (see `platform/open-book`); every setter writes into the active profile, and
+ * the flat `SettingsState` fields always mirror the active profile so existing
+ * consumers (`useSettingsStore((s) => s.fontSize)`) need no change.
+ *   - `default`: Japanese/CJK books (tategaki, mincho, paginated).
+ *   - `hako`:    Vietnamese (Hako) light novels — horizontal, continuous,
+ *                wider margins, Merriweather (see `HAKO_PRESET`).
+ */
+export type SettingsProfile = "default" | "hako";
+
 interface SettingsState {
+  activeProfile: SettingsProfile;
+  profiles: Record<SettingsProfile, SettingsData>;
+  setActiveProfile: (profile: SettingsProfile) => void;
   fontSize: number;
   lineHeight: number;
   fontFamily: FontFamily;
@@ -210,30 +229,84 @@ const DEFAULTS: SettingsData = {
   discordCover: true, // opt-out; uploads the cover to a public host (catbox.moe) for the large image
 };
 
+/**
+ * The fields the `hako` profile overrides out of the box: Vietnamese light novels
+ * read left-to-right, and users likely won't touch the settings, so ship sensible
+ * defaults — horizontal continuous scroll, roomy side margins, a Latin serif.
+ * Only these differ from `DEFAULTS`; everything else (font size, theme, …) is
+ * shared. Users can still change them — the change sticks to the `hako` profile.
+ */
+export const HAKO_PRESET: Partial<SettingsData> = {
+  writingMode: "horizontal",
+  readingMode: "continuous",
+  sideMargin: 25, // % per edge
+  fontFamily: "merriweather",
+};
+
+const HAKO_DEFAULTS: SettingsData = { ...DEFAULTS, ...HAKO_PRESET };
+
+/** The persisted settings keys, used to lift a pre-profiles (v0) persisted blob
+ *  into the `default` profile on migration. */
+const SETTINGS_KEYS = Object.keys(DEFAULTS) as (keyof SettingsData)[];
+function extractSettings(src: Record<string, unknown>): Partial<SettingsData> {
+  const out: Partial<SettingsData> = {};
+  for (const k of SETTINGS_KEYS) if (k in src) (out as Record<string, unknown>)[k] = src[k];
+  return out;
+}
+
 export const useSettingsStore = create<SettingsState>()(
   persist(
-    (set) => ({
-      ...DEFAULTS,
-      setFontSize: (fontSize) => set({ fontSize }),
-      setLineHeight: (lineHeight) => set({ lineHeight }),
-      setFontFamily: (fontFamily) => set({ fontFamily }),
-      setTheme: (theme) => set({ theme }),
-      setReadingMode: (readingMode) => set({ readingMode }),
-      setFuriganaMode: (furiganaMode) => set({ furiganaMode }),
-      setMangaSpread: (mangaSpread) => set({ mangaSpread }),
-      setMangaReadingMode: (mangaReadingMode) => set({ mangaReadingMode }),
-      setMangaScrollDirection: (mangaScrollDirection) => set({ mangaScrollDirection }),
-      setMangaStripWidth: (mangaStripWidth) => set({ mangaStripWidth }),
-      setMangaStripGap: (mangaStripGap) => set({ mangaStripGap }),
-      setWritingMode: (writingMode) => set({ writingMode }),
-      setPageColumns: (pageColumns) => set({ pageColumns }),
-      setSideMargin: (sideMargin) => set({ sideMargin }),
-      setDiscordRichPresence: (discordRichPresence) => set({ discordRichPresence }),
-      setDiscordCover: (discordCover) => set({ discordCover }),
-      reset: () => set({ ...DEFAULTS }),
-    }),
+    (set) => {
+      // Every setter writes the field to both the flat state (what consumers read)
+      // and the active profile (what persists per book type).
+      const patch = (p: Partial<SettingsData>) =>
+        set((s) => ({
+          ...p,
+          profiles: { ...s.profiles, [s.activeProfile]: { ...s.profiles[s.activeProfile], ...p } },
+        }));
+      return {
+        activeProfile: "default",
+        profiles: { default: { ...DEFAULTS }, hako: { ...HAKO_DEFAULTS } },
+        ...DEFAULTS,
+        // Switch profiles: pull the target profile's values into the flat state so
+        // the reader re-reads them. No-op if already active (avoids a re-render).
+        setActiveProfile: (profile) =>
+          set((s) => (s.activeProfile === profile ? {} : { activeProfile: profile, ...s.profiles[profile] })),
+        setFontSize: (fontSize) => patch({ fontSize }),
+        setLineHeight: (lineHeight) => patch({ lineHeight }),
+        setFontFamily: (fontFamily) => patch({ fontFamily }),
+        setTheme: (theme) => patch({ theme }),
+        setReadingMode: (readingMode) => patch({ readingMode }),
+        setFuriganaMode: (furiganaMode) => patch({ furiganaMode }),
+        setMangaSpread: (mangaSpread) => patch({ mangaSpread }),
+        setMangaReadingMode: (mangaReadingMode) => patch({ mangaReadingMode }),
+        setMangaScrollDirection: (mangaScrollDirection) => patch({ mangaScrollDirection }),
+        setMangaStripWidth: (mangaStripWidth) => patch({ mangaStripWidth }),
+        setMangaStripGap: (mangaStripGap) => patch({ mangaStripGap }),
+        setWritingMode: (writingMode) => patch({ writingMode }),
+        setPageColumns: (pageColumns) => patch({ pageColumns }),
+        setSideMargin: (sideMargin) => patch({ sideMargin }),
+        setDiscordRichPresence: (discordRichPresence) => patch({ discordRichPresence }),
+        setDiscordCover: (discordCover) => patch({ discordCover }),
+        // Reset the *active* profile to its own baseline (hako keeps its preset).
+        reset: () =>
+          set((s) => {
+            const base = s.activeProfile === "hako" ? HAKO_DEFAULTS : DEFAULTS;
+            return { ...base, profiles: { ...s.profiles, [s.activeProfile]: { ...base } } };
+          }),
+      };
+    },
     {
       name: "aozora-reader-settings",
+      version: 1,
+      // v0 (pre-profiles) stored the settings flat. Lift them into the `default`
+      // profile and seed the `hako` profile so existing users keep their prefs.
+      migrate: (persisted: unknown, version: number) => {
+        const p = (persisted ?? {}) as Record<string, unknown>;
+        if (version >= 1 && p.profiles) return p;
+        const def = { ...DEFAULTS, ...extractSettings(p) };
+        return { ...p, ...def, profiles: { default: def, hako: { ...HAKO_DEFAULTS } }, activeProfile: "default" };
+      },
     },
   ),
 );

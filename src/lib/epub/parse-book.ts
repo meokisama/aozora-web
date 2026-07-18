@@ -26,6 +26,8 @@ export interface ParsedBook {
   renditionSpread: RenditionSpread;
   /** `<dc:title>` from the OPF metadata; empty when the EPUB declares none. */
   title: string;
+  /** `<dc:creator>` from the OPF metadata; empty when the EPUB declares none. */
+  author: string;
 }
 
 /**
@@ -48,7 +50,9 @@ export async function parseBook(blob: Blob): Promise<ParsedBook> {
   }
 
   const elementHtml = element.innerHTML;
-  const title = firstText(getMetadata(contents)?.["dc:title"]) || "";
+  const metadata = getMetadata(contents);
+  const title = firstText(metadata?.["dc:title"]) || "";
+  const author = firstText(metadata?.["dc:creator"]) || "";
   const ppd = getPageProgressionDirection(contents);
   // Vertical (tategaki) detection. PPD=rtl and the 電書協 `vrtl` class are strong
   // signals. Calibre/KFX conversions instead declare `writing-mode: vertical-rl`
@@ -108,5 +112,6 @@ export async function parseBook(blob: Blob): Promise<ParsedBook> {
     spreadPairs,
     renditionSpread,
     title,
+    author,
   };
 }
