@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ArrowLeft, Bookmark, Highlighter, Images, List, Loader2, Maximize, Minimize, Search, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useReaderStore } from "@/stores/reader-store";
-import { saveProgress } from "@/platform/progress";
+import { saveProgress, getLocalBlob, upsertHostBook } from "@/platform/library";
 import { useSettingsStore, type WritingMode } from "@/stores/settings-store";
 import { useFontsStore } from "@/stores/fonts-store";
 import { useUiStore } from "@/stores/ui-store";
@@ -32,6 +32,7 @@ import { AnnotationPopover } from "./annotation-popover";
 import { AnnotationTrigger } from "./annotation-trigger";
 import { useBookmarks } from "./hooks/use-bookmarks";
 import { useAnnotations } from "./hooks/use-annotations";
+import { useReadingSession } from "./hooks/use-reading-session";
 import { clearAnnotationHighlights, DEFAULT_ANNOTATION_COLOR } from "@/lib/reader/annotations";
 import { readBookBlob, type DownloadProgress } from "@/platform/books";
 import { toggleFullscreen } from "@/platform/fullscreen";
@@ -203,6 +204,9 @@ export function ReaderView() {
   // the highlights hook still expects the callback, so pass a stable no-op.
   const clearLookup = useCallback(() => {}, []);
 
+  // Reading-session tracking for the stats page (accrues active time + chars read).
+  const { mark: markSession } = useReadingSession(book?.id);
+
   // Text highlights + notes: list, pending-selection trigger, and colour/note
   // editor. Char-offset anchored, so the shell repaints on content rebuild and
   // paginated section swaps via the returned repaintAnnotations.
@@ -238,6 +242,7 @@ export function ReaderView() {
       charRef.current = state.char;
       setCurrentChar(state.char);
       setPageInfo({ page: state.page, totalPages: state.totalPages });
+      markSession(state.char, "paginated");
       setFootnote(null);
       clearAnnoTrigger(); // the pending selection flipped away
       closeAnnoPopover(); // its anchored selection flipped away
@@ -245,7 +250,7 @@ export function ReaderView() {
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = setTimeout(persist, 800);
     },
-    [persist, repaintAnnotations, closeAnnoPopover, clearAnnoTrigger],
+    [persist, markSession, repaintAnnotations, closeAnnoPopover, clearAnnoTrigger],
   );
 
   // Position updates from the fixed-layout viewer: a 0-based page ordinal. Progress
@@ -256,11 +261,12 @@ export function ReaderView() {
       totalRef.current = totalPages;
       setCurrentChar(ordinal);
       setPageInfo({ page: ordinal, totalPages });
+      markSession(ordinal, "fixed");
       if (!book || !totalPages) return;
       const progress = totalPages > 1 ? Math.min(1, ordinal / (totalPages - 1)) : 1;
       void saveProgress(book.id, { exploredCharCount: ordinal, charCount: totalPages, progress, lastOpenedAt: Date.now() });
     },
-    [book],
+    [book, markSession],
   );
 
   // Jumps to a character offset, in whichever mode is active.
@@ -352,12 +358,20 @@ export function ReaderView() {
       try {
         let parsed = await getCachedBook(book.id, book.key);
         if (!parsed) {
-          // Stream download progress (dominant wait for large epubs); once the
-          // bytes are in, clearing it flips the overlay to the "Processing…"
-          // (decrypt + parse) phase, which has no granular progress.
-          const blob = await readBookBlob(book, (p) => {
-            if (!cancelled) setDownload(p);
-          });
+          // Local (imported) books read their epub blob from IndexedDB; host
+          // books stream it over HTTP with a download-progress bar (the dominant
+          // wait for large epubs). Once the bytes are in, clearing `download`
+          // flips the overlay to the "Processing…" (decrypt + parse) phase.
+          let blob: Blob;
+          if (book.source === "local") {
+            const local = await getLocalBlob(book.id);
+            if (!local) throw new Error("missing local book blob");
+            blob = local;
+          } else {
+            blob = await readBookBlob(book, (p) => {
+              if (!cancelled) setDownload(p);
+            });
+          }
           if (cancelled) return;
           setDownload(null);
           parsed = await parseBook(blob);
@@ -370,6 +384,11 @@ export function ReaderView() {
         // change. Falls back to the filename-derived title if the EPUB has none.
         setBookTitle(parsed.title || book.title);
         if (parsed.title) document.title = parsed.title;
+        // Refresh the host book's library record with its real title once parsed
+        // (the record was auto-added under the `?book=` filename on open).
+        if (book.source !== "local" && parsed.title) {
+          void upsertHostBook({ name: book.filePath, title: parsed.title });
+        }
 
         const { html, objectUrls, keyToUrl } = buildReaderHtml(parsed.elementHtml, parsed.blobs);
         objectUrlsRef.current = objectUrls;
@@ -575,6 +594,8 @@ export function ReaderView() {
   const handleScroll = () => {
     if (modeRef.current !== "continuous") return;
     setFootnote(null);
+    clearAnnoTrigger(); // the pending selection scrolled away
+    closeAnnoPopover(); // its anchored selection scrolled away (no-op if none open)
     if (rafRef.current) return;
     rafRef.current = requestAnimationFrame(() => {
       rafRef.current = 0;
@@ -582,6 +603,7 @@ export function ReaderView() {
       if (!host || !anchorsRef.current.anchors.length) return;
       charRef.current = currentCharAtCenter(host, anchorsRef.current.anchors, verticalRef.current);
       setCurrentChar(charRef.current);
+      markSession(charRef.current, "continuous");
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = setTimeout(persist, 800);
     });

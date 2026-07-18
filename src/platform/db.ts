@@ -6,11 +6,17 @@
  */
 
 const DB_NAME = "aozora-web";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 export const STORE_PROGRESS = "progress";
 export const STORE_BOOKMARKS = "bookmarks";
 export const STORE_ANNOTATIONS = "annotations";
+/** Library book records (metadata + progress), keyed by book id. */
+export const STORE_BOOKS = "books";
+/** Imported (local) epub blobs, keyed by book id. Host books never land here. */
+export const STORE_BOOKBLOBS = "bookblobs";
+/** Reading sessions for stats, keyed by their own id, indexed by bookId. */
+export const STORE_SESSIONS = "sessions";
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
@@ -22,14 +28,18 @@ function openDb(): Promise<IDBDatabase> {
       const db = req.result;
       // progress: out-of-line keys (keyed by book id via idbPut).
       if (!db.objectStoreNames.contains(STORE_PROGRESS)) db.createObjectStore(STORE_PROGRESS);
-      // bookmarks / annotations: one record per row, keyed by its own id, with a
-      // bookId index so a book's list is a single index range query.
-      for (const name of [STORE_BOOKMARKS, STORE_ANNOTATIONS]) {
+      // bookmarks / annotations / sessions: one record per row, keyed by its own
+      // id, with a bookId index so a book's list is a single index range query.
+      for (const name of [STORE_BOOKMARKS, STORE_ANNOTATIONS, STORE_SESSIONS]) {
         if (!db.objectStoreNames.contains(name)) {
           const store = db.createObjectStore(name, { keyPath: "id" });
           store.createIndex("bookId", "bookId", { unique: false });
         }
       }
+      // books: library records keyed by book id. bookblobs: imported epub bytes
+      // keyed by book id (out-of-line, put with an explicit key).
+      if (!db.objectStoreNames.contains(STORE_BOOKS)) db.createObjectStore(STORE_BOOKS, { keyPath: "id" });
+      if (!db.objectStoreNames.contains(STORE_BOOKBLOBS)) db.createObjectStore(STORE_BOOKBLOBS);
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -60,6 +70,17 @@ export async function idbPut(store: string, key: string, value: unknown): Promis
 }
 
 // --- Keyed-record access (bookmarks / annotations, keyPath "id"). -----------
+
+/** Every record in a keyPath store (e.g. the whole library). */
+export async function idbGetAll<T>(store: string): Promise<T[]> {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, "readonly");
+    const req = tx.objectStore(store).getAll();
+    req.onsuccess = () => resolve((req.result as T[]) || []);
+    req.onerror = () => reject(req.error);
+  });
+}
 
 /** All records whose indexed field equals `value` (e.g. a book's bookmarks). */
 export async function idbGetAllByIndex<T>(store: string, index: string, value: string): Promise<T[]> {

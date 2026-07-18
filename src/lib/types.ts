@@ -1,9 +1,18 @@
+/**
+ * Where a library book's bytes come from:
+ * - `host`: served by the ranobe-hub host, fetched over HTTP via `?book=` +
+ *   token (only metadata + progress are stored locally, never the epub).
+ * - `local`: imported from the user's machine; the epub blob lives in IndexedDB.
+ */
+export type BookSource = "host" | "local";
+
 /** The book shape the reader consumes. `WebBook` (platform/types) extends it. */
 export interface Book {
   id: string;
   title: string;
   author: string | null;
   language: string | null;
+  /** For host books, the `?book=` name/URL; for local books, unused (""). */
   filePath: string;
   coverPath: string | null;
   fileSize: number | null;
@@ -14,6 +23,23 @@ export interface Book {
   charCount: number;
   favorite: boolean;
   coverDataUrl?: string | null;
+  /** Defaults to "host" for records written before the field existed. */
+  source?: BookSource;
+}
+
+export interface UpdateBookPayload {
+  id: string;
+  title?: string;
+  author?: string;
+  coverDataUrl?: string | null;
+}
+
+/** Partial reading-progress update; only provided fields are persisted. */
+export interface ProgressUpdate {
+  progress?: number;
+  exploredCharCount?: number;
+  charCount?: number;
+  lastOpenedAt?: number;
 }
 
 export interface Bookmark {
@@ -67,4 +93,54 @@ export interface UpdateAnnotationPayload {
   id: string;
   color?: string;
   note?: string | null;
+}
+
+// --- Reading stats. ---------------------------------------------------------
+
+/** One completed reading session, recorded by the reader. */
+export interface ReadingSession {
+  bookId: string | null;
+  startedAt: number;
+  endedAt: number;
+  durationMs: number;
+  charsRead: number;
+}
+
+export interface StatsOverview {
+  totalChars: number;
+  totalMs: number;
+  sessionCount: number;
+  activeDays: number;
+  firstAt: number | null;
+}
+
+export interface DailyActivity {
+  day: string; // 'YYYY-MM-DD', local calendar day
+  chars: number;
+  ms: number;
+  sessions: number;
+  books: number;
+}
+
+export interface HourlyActivity {
+  hour: number; // 0–23, local hour-of-day
+  chars: number;
+  ms: number;
+}
+
+export interface PerBookStats {
+  bookId: string;
+  title: string | null;
+  author: string | null;
+  chars: number;
+  ms: number;
+  sessions: number;
+  lastAt: number;
+}
+
+export interface Stats {
+  overview: StatsOverview;
+  daily: DailyActivity[];
+  hourly: HourlyActivity[];
+  perBook: PerBookStats[];
 }

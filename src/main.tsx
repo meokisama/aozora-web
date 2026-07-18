@@ -6,7 +6,7 @@ import "@fontsource/ibm-plex-sans/700.css";
 import "./index.css";
 import React from "react";
 import { createRoot } from "react-dom/client";
-import { ReaderEmbed } from "./embed/reader-embed";
+import { App } from "./app";
 
 const root = createRoot(document.getElementById("root")!);
-root.render(React.createElement(React.StrictMode, null, React.createElement(ReaderEmbed)));
+root.render(React.createElement(React.StrictMode, null, React.createElement(App)));
