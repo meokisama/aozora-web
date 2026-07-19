@@ -5,6 +5,7 @@ import { ReaderView } from "@/features/reader/reader-view";
 import { LibraryView } from "@/features/library/library-view";
 import { LibrarySidebar } from "@/features/library/library-sidebar";
 import { StatsView } from "@/features/stats/stats-view";
+import { DictionaryView } from "@/features/dictionary/dictionary-view";
 import { AboutView } from "@/features/about/about-view";
 import { SettingsView } from "@/features/settings/settings-view";
 import { useReaderStore } from "@/stores/reader-store";
@@ -106,6 +107,8 @@ export function App() {
         <main className="flex min-w-0 flex-1 flex-col">
           {view === "stats" ? (
             <StatsView />
+          ) : view === "dictionary" ? (
+            <DictionaryView />
           ) : view === "about" ? (
             <AboutView />
           ) : view === "settings" ? (

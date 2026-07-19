@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { BarChart3, BookOpen, CheckCircle2, Circle, Heart, Info, Library, Settings } from "lucide-react";
+import { BarChart3, BookA, BookOpen, CheckCircle2, Circle, Heart, Info, Library, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { readingStatus } from "./format";
 import { useLibraryStore } from "@/stores/library-store";
@@ -123,6 +123,7 @@ export function LibrarySidebar() {
 
       <nav className="shrink-0 space-y-0.5 border-t px-2 py-3">
         <NavItem icon={BarChart3} label={t("sidebar.statistics")} active={view === "stats"} onClick={() => setView("stats")} />
+        <NavItem icon={BookA} label={t("sidebar.dictionary")} active={view === "dictionary"} onClick={() => setView("dictionary")} />
         <NavItem icon={Settings} label={t("sidebar.settings")} active={view === "settings"} onClick={() => setView("settings")} />
         <NavItem icon={Info} label={t("sidebar.about")} active={view === "about"} onClick={() => setView("about")} />
       </nav>

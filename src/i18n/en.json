@@ -30,6 +30,7 @@
     "githubTitle": "Aozora on GitHub (the original desktop app)",
     "library": "Library",
     "statistics": "Statistics",
+    "dictionary": "Dictionary",
     "about": "About",
     "settings": "Settings",
     "authors": "Authors",
@@ -243,6 +244,14 @@
     "clearDataConfirmDesc": "This deletes every imported book, bookmark, highlight, and reading statistic, and resets all settings. This cannot be undone. The app will reload afterward.",
     "clearDataAction": "Delete everything",
     "clearDataFailed": "Failed to clear data"
+  },
+  "dictionary": {
+    "title": "Dictionary",
+    "subtitle": "Instant pop-up definitions while you read",
+    "shotCaption": "Yomitan working directly on this web reader in the browser",
+    "intro": "The original <0>Aozora</0> desktop app ships with a built-in, Yomitan-compatible pop-up dictionary — point at a word and its readings, meanings, and example sentences appear right over the text.",
+    "web": "This web edition doesn't bundle its own dictionary. Instead it works directly with the <0>Yomitan browser extension</0> — as shown above, install Yomitan and add your dictionaries, and its pop-up appears right over this reader.",
+    "getYomitan": "Get the Yomitan extension"
   },
   "about": {
     "githubTitle": "View the original Aozora on GitHub",

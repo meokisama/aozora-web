@@ -30,6 +30,7 @@
     "githubTitle": "Aozora trên GitHub (ứng dụng desktop gốc)",
     "library": "Thư viện",
     "statistics": "Thống kê",
+    "dictionary": "Từ điển",
     "about": "Giới thiệu",
     "settings": "Cài đặt",
     "authors": "Tác giả",
@@ -243,6 +244,14 @@
     "clearDataConfirmDesc": "Thao tác này sẽ xóa mọi sách đã nhập, dấu trang, đánh dấu và thống kê đọc, đồng thời đặt lại mọi cài đặt. Không thể hoàn tác. Ứng dụng sẽ tải lại sau đó.",
     "clearDataAction": "Xóa tất cả",
     "clearDataFailed": "Xóa dữ liệu thất bại"
+  },
+  "dictionary": {
+    "title": "Từ điển",
+    "subtitle": "Tra nghĩa pop-up tức thì ngay khi đang đọc",
+    "shotCaption": "Yomitan hoạt động trực tiếp trên trình đọc web này ngay trong trình duyệt",
+    "intro": "Ứng dụng desktop <0>Aozora</0> gốc được tích hợp sẵn từ điển pop-up tương thích Yomitan — chỉ cần trỏ vào một từ là hiện ngay cách đọc, nghĩa và câu ví dụ ngay trên văn bản.",
+    "web": "Phiên bản web này không đi kèm từ điển riêng. Thay vào đó, nó hoạt động trực tiếp với <0>extension trình duyệt Yomitan</0> — như trong ảnh phía trên, chỉ cần cài Yomitan và thêm từ điển của bạn, pop-up sẽ hiện ngay trên trình đọc này.",
+    "getYomitan": "Cài extension Yomitan"
   },
   "about": {
     "githubTitle": "Xem Aozora gốc trên GitHub",
