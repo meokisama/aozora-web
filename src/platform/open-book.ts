@@ -14,6 +14,11 @@ import type { Book } from "@/lib/types";
 const API_BASE = (import.meta.env.VITE_API_BASE || "/api").replace(/\/+$/, "");
 const BOOKSHELF_BASE = (import.meta.env.VITE_BOOKSHELF_BASE || "/uploads/ebooks").replace(/\/+$/, "");
 
+/** When set, `?book=<name>` fetches a token/key from the host before loading
+ *  (token-gated, encrypted serving). Off by default, in which case names are
+ *  served as plain static files straight from the bookshelf (bibi-style). */
+const REQUIRE_TOKEN = import.meta.env.VITE_REQUIRE_TOKEN === "true";
+
 const isAbsolute = (s: string) => /^https?:\/\//i.test(s);
 
 /** Hako (Vietnamese light-novel) epubs are embedded by absolute URL under a
@@ -34,10 +39,11 @@ function resolveEpubUrl(book: string): string {
   return `${BOOKSHELF_BASE}/${name}`;
 }
 
-/** Requests a short-lived access token + decryption key for a host-served book
- *  (skipped for absolute external URLs, which the host doesn't gate/encrypt). */
+/** Requests a short-lived access token + decryption key for a host-served book.
+ *  Skipped (returns nothing → plaintext static fetch) when token-gating is off,
+ *  or for absolute external URLs, which the host doesn't gate/encrypt. */
 async function fetchToken(book: string): Promise<{ token?: string; key?: string }> {
-  if (isAbsolute(book)) return {};
+  if (!REQUIRE_TOKEN || isAbsolute(book)) return {};
   const res = await fetch(`${API_BASE}/reader/token?book=${encodeURIComponent(book)}`);
   if (!res.ok) throw new Error(`token ${res.status}`);
   const data = (await res.json()) as { token?: string; key?: string };

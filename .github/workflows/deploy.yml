@@ -27,6 +27,9 @@ jobs:
 
       - name: Build
         run: yarn build
+        env:
+          VITE_GA_ID: ${{ vars.VITE_GA_ID }}
+          VITE_REQUIRE_TOKEN: ${{ vars.VITE_REQUIRE_TOKEN }}
 
       - name: Deploy via rsync over SSH
         uses: burnett01/rsync-deployments@v9
