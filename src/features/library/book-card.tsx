@@ -7,10 +7,7 @@ import { useLibraryPrefs } from "@/stores/library-prefs-store";
 import bookTemplate from "@/assets/book-template.png";
 import type { Book } from "@/lib/types";
 
-/**
- * A single book in the library grid: cover, title, author, reading state.
- * Clicking the cover opens the book; right-clicking opens the action menu.
- */
+/** A single book in the library grid. Click opens; right-click opens the action menu. */
 export function BookCard({ book, onOpen }: { book: Book; onOpen?: (book: Book) => void }) {
   const { t } = useTranslation();
   const status = readingStatus(book);
@@ -18,8 +15,7 @@ export function BookCard({ book, onOpen }: { book: Book; onOpen?: (book: Book) =
   const lastRead = relativeTime(book.lastOpenedAt, t);
   const showMetadata = useLibraryPrefs((s) => s.showCardMetadata);
 
-  // Fall back to the placeholder when the cover is missing or fails to decode;
-  // reset the error when the cover changes.
+  // Fall back to placeholder when cover is missing or fails; reset on cover change.
   const [coverError, setCoverError] = useState(false);
   useEffect(() => setCoverError(false), [book.coverDataUrl]);
   const useFallback = !book.coverDataUrl || coverError;

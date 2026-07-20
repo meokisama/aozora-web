@@ -51,11 +51,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   return <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">{children}</p>;
 }
 
-/**
- * The app's left rail: brand, status nav, links, and an author browser derived
- * from the books (no stored taxonomy). Owns nav/filter state via the stores so
- * every page renders it unchanged.
- */
+/** The app's left rail: brand, status nav, links, and an author browser derived from the books. */
 export function LibrarySidebar() {
   const { t } = useTranslation();
   const books = useLibraryStore((s) => s.books);
@@ -68,7 +64,7 @@ export function LibrarySidebar() {
 
   const inLibrary = view === "library";
 
-  // Status counts for the nav labels. useMemo — never returned straight from a store selector.
+  // Status counts for nav labels; useMemo — never returned straight from a store selector.
   const counts = useMemo(() => {
     const c = { all: books.length, favorites: 0, reading: 0, finished: 0, unread: 0 };
     for (const b of books) {
@@ -139,8 +135,7 @@ export function LibrarySidebar() {
                 count={a.count}
                 active={inLibrary && authorFilter === a.name}
                 onClick={() => {
-                  // Picking an author shows all their works — clear the status
-                  // filter so it isn't applied on top.
+                  // Clear status filter so an author shows all their works.
                   setView("library");
                   setStatusFilter("all");
                   setAuthorFilter(authorFilter === a.name ? null : a.name);

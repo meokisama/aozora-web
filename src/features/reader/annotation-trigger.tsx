@@ -4,11 +4,10 @@ import { useTranslation } from "react-i18next";
 import { useDismiss } from "./hooks/use-dismiss";
 
 interface Props {
-  /** Viewport point (the mouse-release position) the button anchors to; null closed. */
+  /** Mouse-release point the button anchors to; null closed. */
   point: { x: number; y: number } | null;
   /** Promote to the full colour/note editor. */
   onPick: () => void;
-  /** Dismiss without highlighting (click-away / Escape). */
   onClose: () => void;
 }
 
@@ -16,12 +15,7 @@ const SIZE = 30; // button box (px)
 const GAP = 8; // offset from the cursor
 const MARGIN = 8; // min gap from the viewport edge
 
-/**
- * The unobtrusive first step of highlighting: a button that surfaces at the end of
- * a fresh selection. Clicking it opens the colour/note editor; ignoring it (reading
- * on, clicking away, Escape) leaves the text untouched — so highlighting stays
- * always-on without a full popup covering what you read.
- */
+/** Button surfacing at the end of a fresh selection; click opens the editor, ignoring leaves text untouched. */
 export function AnnotationTrigger({ point, onPick, onClose }: Props) {
   const { t } = useTranslation();
   const ref = useRef<HTMLButtonElement>(null);

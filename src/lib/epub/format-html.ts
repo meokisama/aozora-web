@@ -18,16 +18,14 @@ function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// The constant prefix/suffix around the key in a dummy data-URI, sourced from
-// buildDummyImage (split on its single-space placeholder) so the base64 blob is
-// never duplicated here.
+// Constant prefix/suffix around the key in a dummy data-URI, derived from
+// buildDummyImage (split on its space placeholder) to avoid duplicating the base64.
 const [DUMMY_PREFIX, DUMMY_SUFFIX] = buildDummyImage(" ").split(" ");
 
 /**
- * Swaps dummy image placeholders for live object URLs built from the stored
- * blobs. Returns the object URLs too so the caller can revoke them on unmount,
- * plus a key→URL map so other features (e.g. the illustration gallery) can
- * resolve an image path to its live URL without re-creating it.
+ * Swaps dummy image placeholders for live object URLs built from the stored blobs.
+ * Returns the object URLs (caller revokes on unmount) and a key→URL map (so e.g.
+ * the illustration gallery can resolve a path without re-creating the URL).
  */
 export function buildReaderHtml(
   elementHtml: string,
@@ -44,10 +42,9 @@ export function buildReaderHtml(
     keyToUrl.set(key, url);
   }
 
-  // One pass for the dummy data-URIs, one for bare `aoz:<key>` refs — instead of
-  // two full-string replaceAll scans per blob (2×N passes over the whole HTML).
-  // Keys are matched longest-first so an alternation never stops short on a key
-  // that prefixes another (e.g. `1.jpg` vs `11.jpg`).
+  // Two passes total (dummy data-URIs, then bare `aoz:<key>` refs) instead of 2×N.
+  // Keys matched longest-first so alternation doesn't stop short on a prefixing
+  // key (e.g. `1.jpg` vs `11.jpg`).
   let html = elementHtml;
   if (keys.length) {
     const alt = keys

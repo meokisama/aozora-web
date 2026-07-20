@@ -1,8 +1,4 @@
-/**
- * Browser Fullscreen API wrapper replacing the desktop app's window IPC. Toggles
- * fullscreen on the document element and mirrors the state into the ui-store so
- * the reader's toolbar and the title-bar visibility stay in sync.
- */
+/** Fullscreen API wrapper; mirrors state into the ui-store to keep the toolbar in sync. */
 
 import { useUiStore } from "@/stores/ui-store";
 
@@ -18,7 +14,7 @@ export function isFullscreen(): boolean {
   return document.fullscreenElement !== null;
 }
 
-/** Wires `fullscreenchange` → ui-store. Call once at app start; returns a cleanup. */
+/** Wires `fullscreenchange` → ui-store. Call once at app start; returns cleanup. */
 export function initFullscreenSync(): () => void {
   const sync = () => useUiStore.getState().setFullscreen(isFullscreen());
   document.addEventListener("fullscreenchange", sync);

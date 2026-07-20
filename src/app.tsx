@@ -16,12 +16,7 @@ import { useLibraryStore } from "@/stores/library-store";
 import { initFullscreenSync } from "@/platform/fullscreen";
 import { openHostByName } from "@/platform/open-book";
 
-/**
- * App shell. When launched with `?book=<name>` (the ranobe-hub embed entry) it
- * opens that host book straight into the reader; otherwise it shows the local
- * Library / Stats pages. The reader's Back button clears the current book, which
- * returns here — always to the Library (per the chosen navigation).
- */
+/** App shell. `?book=<name>` opens that host book in the reader; otherwise shows the Library. */
 export function App() {
   const currentBook = useReaderStore((s) => s.currentBook);
   const view = useUiStore((s) => s.view);
@@ -38,13 +33,12 @@ export function App() {
     document.documentElement.classList.toggle("dark", isDark);
   }, [theme]);
 
-  // Load the library list up front so returning from the reader is instant.
+  // Preload library so returning from the reader is instant.
   useEffect(() => {
     void useLibraryStore.getState().loadBooks();
   }, []);
 
-  // Boot: a `?book=` param opens that host book directly; otherwise land on the
-  // library. Refresh the library whenever the reader closes so progress shows.
+  // Boot: `?book=` opens that host book directly; otherwise land on the library.
   useEffect(() => {
     let cancelled = false;
     const name = new URLSearchParams(window.location.search).get("book");
@@ -69,7 +63,7 @@ export function App() {
     };
   }, []);
 
-  // Keep the library grid fresh (progress/last-opened) each time a book closes.
+  // Refresh library (progress/last-opened) each time a book closes.
   useEffect(() => {
     if (!currentBook) void useLibraryStore.getState().loadBooks();
   }, [currentBook]);
@@ -100,8 +94,7 @@ export function App() {
       {error && (
         <div className="border-b bg-destructive/10 px-4 py-2 text-center text-xs text-destructive">{error}</div>
       )}
-      {/* The sidebar is persistent across the library / stats / about pages; only
-          the reader (handled above) takes over the whole screen. */}
+      {/* Sidebar persists across non-reader pages. */}
       <div className="flex min-h-0 flex-1">
         <LibrarySidebar />
         <main className="flex min-w-0 flex-1 flex-col">

@@ -1,14 +1,8 @@
-/**
- * Small presentation helpers shared by the library views.
- */
+/** Small presentation helpers shared by the library views. */
 
 export type ReadingStatus = "unread" | "reading" | "finished";
 
-/**
- * Derives a reading status from a book's progress. There is no separate status
- * column — `progress` (0..1) is the single source of truth: 0 = untouched,
- * (near-)1 = read through, anything between = in progress.
- */
+/** Reading status derived from `progress` (0..1), the single source of truth. */
 export function readingStatus(book: { progress?: number } | null | undefined): ReadingStatus {
   const p = book?.progress ?? 0;
   if (p <= 0) return "unread";
@@ -19,11 +13,7 @@ export function readingStatus(book: { progress?: number } | null | undefined): R
 /** Minimal shape of i18next's `t` — avoids a hard dependency on its types here. */
 type TFunc = (key: string, options?: Record<string, unknown>) => string;
 
-/**
- * A compact, human relative time ("just now", "3d ago"), localised via the
- * passed `t`. Null for falsy ts. Callers get `t` from `useTranslation()` so the
- * label re-renders on a language change.
- */
+/** Compact relative time ("just now", "3d ago"), localised via `t`. Null for falsy ts. */
 export function relativeTime(ts: number | null | undefined, t: TFunc): string | null {
   if (!ts) return null;
   const sec = Math.round((Date.now() - ts) / 1000);

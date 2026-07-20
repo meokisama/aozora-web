@@ -51,24 +51,22 @@ const selfClosingContentTags = [
   "title",
 ];
 
-// Precompiled once: XHTML lets these content tags self-close (`<p/>`), which HTML
-// parsing mishandles, so each self-closing form is expanded to an explicit pair.
-// Compiling per spine item (there can be hundreds) was pure waste.
+// XHTML lets these content tags self-close (`<p/>`), which HTML parsing mishandles,
+// so each is expanded to an explicit pair. Precompiled once (not per spine item).
 const selfClosingContentTagRes = selfClosingContentTags.map((tag) => ({ tag, re: new RegExp(`<${tag}[^>]+?>`, "gim") }));
 
 /**
- * Flattens the EPUB spine into one detached <div> tree (a wrapper per spine
- * item, id `aoz-<idref>`), replaces image references with dummy data-URIs
- * carrying the original path, and derives the chapter sections + total char count.
+ * Flattens the EPUB spine into one detached <div> tree (a wrapper per spine item,
+ * id `aoz-<idref>`), replaces image refs with dummy data-URIs carrying the original
+ * path, and derives the chapter sections + total char count.
  */
 export function generateHtml(data: Record<string, string | Blob>, contents: OpfContents, _contentsDirectory: string): GeneratedHtml {
   const manifestItems = getManifestItems(contents);
   const fallbackData = new Map<string, string>();
   let navKey = "";
 
-  // Spine items are usually XHTML, but Open Manga Format (OMF) books reference
-  // images directly from the spine. Track both so the flattener can synthesize a
-  // wrapper for an image-in-spine page.
+  // Spine items are usually XHTML, but OMF books reference images directly from the
+  // spine. Track both so an image-in-spine page can get a synthesized wrapper.
   const itemIdToImageRef: Record<string, string> = {};
   const itemIdToHtmlRef = manifestItems.reduce(
     (acc, item) => {
@@ -101,7 +99,7 @@ export function generateHtml(data: Record<string, string | Blob>, contents: OpfC
   const result = document.createElement("div");
 
   let mainChapters: Section[] = [];
-  // The blob key set is invariant across spine items — build it once, not per item.
+  // Blob key set is invariant across spine items — build once.
   const blobKeys = new Set(blobLocations);
 
   // Table of contents → main chapters
@@ -155,8 +153,8 @@ export function generateHtml(data: Record<string, string | Blob>, contents: OpfC
   let previousCharacterCount = 0;
   let currentCharCount = 0;
 
-  // Maps a spine item's href (full path and basename) to its wrapper id, so
-  // whole-file in-content links (e.g. an embedded TOC page) resolve to a target.
+  // Maps a spine item's href (full path + basename) to its wrapper id, so
+  // whole-file in-content links (e.g. an embedded TOC) resolve to a target.
   const hrefToWrapperId = new Map<string, string>();
 
   // Flatten each spine item
@@ -167,7 +165,7 @@ export function generateHtml(data: Record<string, string | Blob>, contents: OpfC
       itemIdRef = fallbackData.get(itemIdRef)!;
       htmlHref = itemIdToHtmlRef[itemIdRef];
     }
-    // Image-in-spine (OMF): the spine item *is* an image with no XHTML wrapper.
+    // Image-in-spine (OMF): the spine item is an image with no XHTML wrapper.
     const imageHref = !htmlHref ? itemIdToImageRef[itemIdRef] : null;
 
     let innerHtml: string;
@@ -176,9 +174,8 @@ export function generateHtml(data: Record<string, string | Blob>, contents: OpfC
     let bodyClass = "";
 
     if (imageHref) {
-      // Synthesize a body holding just the image. The dummy placeholder carries
-      // the manifest href (also the blob key), so buildReaderHtml swaps it for an
-      // object URL at render time — same path as embedded images.
+      // Synthesize a body holding just the image; the dummy placeholder carries the
+      // manifest href (= blob key), swapped to an object URL like embedded images.
       htmlHref = imageHref; // let TOC / href resolution match the image item
       innerHtml = `<img class="aoz-spine-item-image" alt="" src="${buildDummyImage(imageHref)}" />`;
     } else {
@@ -210,12 +207,10 @@ export function generateHtml(data: Record<string, string | Blob>, contents: OpfC
       bodyId = body.id || "";
       bodyClass = body.className || "";
 
-      // Resolve each image reference against its spine item's folder to the blob
-      // key (manifest href), then swap the packed image for its dummy placeholder
-      // *on the element itself*. Deliberately NOT a whole-HTML string replace: flat
-      // numeric filenames like `1.jpg` are substrings of `11.jpg`/`110.jpg`, so a
-      // global replaceAll chews the key out of already-substituted dummies (or hits
-      // such a string in prose). Per-element matching is exact.
+      // Resolve each image ref against its spine item's folder to the blob key, then
+      // swap for the dummy placeholder on the element itself. NOT a whole-HTML replace:
+      // flat names like `1.jpg` are substrings of `11.jpg`, so a global replaceAll
+      // corrupts already-substituted dummies (or prose). Per-element matching is exact.
       for (const elm of [...body.querySelectorAll("image,img")]) {
         const attributes = elm.tagName.toLowerCase() === "image" ? elm.getAttributeNames().filter((attr) => attr.endsWith("href")) : ["src"];
         for (const attr of attributes) {
@@ -224,7 +219,7 @@ export function generateHtml(data: Record<string, string | Blob>, contents: OpfC
           const resolved = path.join(path.dirname(htmlHref), value);
           let key: string | null = blobKeys.has(resolved) ? resolved : null;
           if (!key) {
-            // The href may be percent-encoded (spaces etc.) while the blob key is not.
+            // href may be percent-encoded while the blob key is not.
             try {
               const decoded = decodeURIComponent(resolved);
               if (blobKeys.has(decoded)) key = decoded;
@@ -259,8 +254,7 @@ export function generateHtml(data: Record<string, string | Blob>, contents: OpfC
       if (base) hrefToWrapperId.set(base, childWrapperDiv.id);
     }
 
-    // Mark inline-glyph images before counting so each gaiji weighs one character
-    // (and the reader/gallery treat them as glyphs, not illustrations).
+    // Mark inline-glyph images before counting so each gaiji weighs one character.
     tagGaijiImages(childWrapperDiv);
 
     const elementCharCount = countCharacters(childWrapperDiv);
@@ -312,16 +306,15 @@ export function generateHtml(data: Record<string, string | Blob>, contents: OpfC
 }
 
 /**
- * Rewrites internal <a> hrefs to in-document fragments resolvable against the
- * flattened tree: fragment links keep their fragment (original element ids are
- * preserved in the flattened HTML), whole-file links map to the target spine
- * item's wrapper id. External (protocol) links are left untouched.
+ * Rewrites internal <a> hrefs to in-document fragments: fragment links keep their
+ * fragment (original element ids survive in the flattened HTML), whole-file links
+ * map to the target spine item's wrapper id. External (protocol) links untouched.
  */
 function flattenAnchorHref(el: Element, hrefToWrapperId: Map<string, string>): void {
   Array.from(el.getElementsByTagName("a")).forEach((tag) => {
     const oldHref = tag.getAttribute("href");
     if (!oldHref) return;
-    // Leave absolute/protocol links (http:, mailto:, …) alone.
+    // Leave absolute/protocol links alone.
     if (/^[a-z][a-z0-9+.-]*:/i.test(oldHref)) return;
 
     const hashIndex = oldHref.indexOf("#");

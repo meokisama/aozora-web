@@ -1,7 +1,7 @@
 import { useLayoutEffect, useState, type RefObject } from "react";
 
-const GAP = 6; // px between the anchor and the popup
-const MARGIN = 8; // min gap from the viewport edge
+const GAP = 6; // px between anchor and popup
+const MARGIN = 8; // min gap from viewport edge
 
 export interface PopupRect {
   left: number;
@@ -11,15 +11,10 @@ export interface PopupRect {
 }
 
 /**
- * Places a floating popup against an anchor box (a DOMRect in viewport
- * coordinates): below the anchor by default, flipping above when there isn't
- * room, then clamping to the viewport on both axes. Measures after layout, so
- * the popup must render at its natural size first — callers render it off-screen
- * and hidden until this returns a position.
- *
- * `contentKey` re-runs the measurement when the popup's content (hence size)
- * changes; `onLayout` reports the final placed box (e.g. for the dictionary's
- * sticky zone).
+ * Places a floating popup against an anchor DOMRect: below by default, flipping
+ * above when there's no room, then clamped to the viewport. Measures after
+ * layout, so callers must render it off-screen at natural size first.
+ * `contentKey` re-measures on content/size change; `onLayout` reports the final box.
  */
 export function useAnchoredPosition(
   ref: RefObject<HTMLElement | null>,

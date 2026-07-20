@@ -1,8 +1,7 @@
 /**
- * Storage + registration for user-imported reader fonts. Font files can be
- * several MB (CJK), so the bytes live in IndexedDB (not the localStorage-backed
- * settings store) and are registered as document-level FontFaces on load — which
- * makes them resolve inside the reader's shadow DOM, same as `@font-face`.
+ * Storage + registration for user-imported reader fonts. Bytes live in IndexedDB
+ * (CJK fonts are several MB) and are registered as document-level FontFaces so
+ * they resolve inside the reader's shadow DOM, same as `@font-face`.
  */
 
 const DB_NAME = "aozora-fonts";
@@ -10,11 +9,10 @@ const STORE = "fonts";
 
 export interface StoredFont {
   id: string;
-  /** User-facing name (derived from the file name). */
+  /** User-facing name (from the file name). */
   label: string;
   /** Unique CSS font-family the FontFace registers under. */
   family: string;
-  /** Raw font file. */
   blob: Blob;
 }
 
@@ -46,7 +44,7 @@ export const idbDelete = (id: string): Promise<void> => run("readwrite", (s) => 
 // Keep handles so a removed font can be torn out of document.fonts too.
 const registered = new Map<string, FontFace>();
 
-/** Loads a font file and adds it to `document.fonts` under `family`. */
+/** Loads a font and adds it to `document.fonts` under `family`. */
 export async function registerFont(family: string, source: Blob | ArrayBuffer): Promise<void> {
   const buf = source instanceof Blob ? await source.arrayBuffer() : source;
   const face = new FontFace(family, buf);

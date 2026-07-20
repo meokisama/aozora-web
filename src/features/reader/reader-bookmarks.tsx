@@ -16,10 +16,7 @@ interface Props {
   onRemove: (id: string) => void;
 }
 
-/**
- * Bookmarks sheet: an add field (pre-filled with a suggested name) plus the
- * list of saved bookmarks, each jumping to its character offset or deletable.
- */
+/** Bookmarks sheet: add field plus list of saved bookmarks, each jumps to its offset or deletes. */
 export function ReaderBookmarks({ open, onOpenChange, bookmarks, nameInput, onNameInputChange, onAdd, onJump, onRemove }: Props) {
   const { t } = useTranslation();
   return (

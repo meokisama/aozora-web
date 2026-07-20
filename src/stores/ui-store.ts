@@ -16,11 +16,8 @@ interface UiState {
   setFullscreen: (fullscreen: boolean) => void;
 }
 
-/**
- * Top-level navigation + library filter state. The reader is driven separately
- * by reader-store; this store picks the non-reader page and holds the sidebar's
- * status/author filters so they survive navigating away and back.
- */
+/** Top-level navigation + library filter state (reader is driven separately by
+ *  reader-store). Filters survive navigating away and back. */
 export const useUiStore = create<UiState>((set) => ({
   view: "library",
   setView: (view) => set({ view }),

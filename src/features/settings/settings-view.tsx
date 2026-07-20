@@ -44,11 +44,7 @@ function SettingRow({ label, description, children }: { label: string; descripti
   );
 }
 
-/**
- * App-wide preferences (rendered beside the shared sidebar by app.tsx), grouped
- * into sections. Each control reads/writes the store that owns the pref, so
- * changes stay in sync app-wide (e.g. the dark-mode toggle mirrors the reader).
- */
+/** App-wide preferences grouped into sections. Each control reads/writes the store owning the pref. */
 export function SettingsView() {
   const { t, i18n } = useTranslation();
 
@@ -61,8 +57,7 @@ export function SettingsView() {
   const showCardMetadata = useLibraryPrefs((s) => s.showCardMetadata);
   const setShowCardMetadata = useLibraryPrefs((s) => s.setShowCardMetadata);
 
-  // Disables the button while the wipe runs; the page reloads before it
-  // resolves, so this never has to be reset.
+  // Disables the button during the wipe; page reloads before it resolves, so never reset.
   const [clearing, setClearing] = useState(false);
 
   const currentLocale = (i18n.resolvedLanguage || i18n.language || "en").startsWith("vi") ? "vi" : "en";

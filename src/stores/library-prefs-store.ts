@@ -1,11 +1,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-/**
- * Library view prefs (sort + grid/list layout), persisted in the renderer via
- * Zustand persist, not the main process. Search text and the status tab are
- * ephemeral local component state in the library view.
- */
+/** Library view prefs (sort + layout), persisted via Zustand. Search text and
+ *  status tab stay as ephemeral component state. */
 
 export type SortKey = "lastOpened" | "added" | "title" | "author" | "progress";
 export type ViewMode = "grid" | "list";

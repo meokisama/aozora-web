@@ -1,16 +1,10 @@
 /**
- * Library store — the IndexedDB replacement for the desktop app's SQLite `books`
- * table + `library:*` IPC and its filesystem-managed epub files. Two book sources
- * coexist (see `BookSource`):
- *
- * - **host**: opened via `?book=` from the ranobe-hub host. Only the metadata +
- *   progress record is kept here; the epub bytes are still fetched over HTTP
- *   (platform/books). `upsertHostBook` auto-adds it to the library on open.
- * - **local**: imported from the user's machine via `<input type=file>`. The epub
- *   blob is stored in `bookblobs`; the reader reads it back with `getLocalBlob`.
- *
- * Reading progress lives on the book record (as it did in the desktop `books`
- * table), so the library grid and the reader share one source of truth.
+ * Library store (IndexedDB), replacing the desktop app's SQLite `books` table.
+ * Two book sources coexist (see `BookSource`):
+ * - host: opened via `?book=`; only metadata + progress kept, epub fetched over
+ *   HTTP. `upsertHostBook` auto-adds it on open.
+ * - local: imported via `<input type=file>`; the blob is stored in `bookblobs`.
+ * Reading progress lives on the book record, shared by the grid and the reader.
  */
 
 import { extractEpubMetadata } from "@/lib/epub/metadata";
@@ -19,12 +13,10 @@ import { deleteCachedBook } from "@/lib/reader-cache";
 import { idbGetAll, idbGetRecord, idbPutRecord, idbDelete, idbGet, idbPut, STORE_BOOKS, STORE_BOOKBLOBS } from "./db";
 import type { Book, BookSource, ProgressUpdate, UpdateBookPayload } from "@/lib/types";
 
-/** The host book id for a `?book=` name — the same key progress used pre-library. */
+/** The host book id for a `?book=` name (the pre-library progress key). */
 export const hostBookId = (book: string): string => `embed:${book}`;
 
-/** Extracts a book's cover from its epub blob, downscaled to a crisp thumbnail
- *  (see resize-cover). Null when the epub has no cover. Used to populate host
- *  book covers after the reader has the bytes. */
+/** Extracts a downscaled cover thumbnail from an epub blob; null if none. */
 export async function extractCover(blob: Blob): Promise<string | null> {
   const meta = await extractEpubMetadata(blob);
   return resizeCoverToDataUrl(meta.coverBytes, meta.coverMime);
@@ -38,11 +30,7 @@ export async function getBook(id: string): Promise<Book | undefined> {
   return idbGetRecord<Book>(STORE_BOOKS, id);
 }
 
-/**
- * Ensures a host book (opened via `?book=`) has a library record, creating it if
- * new and refreshing its title/cover once the EPUB is parsed. Never clobbers the
- * stored reading progress. Returns the up-to-date record.
- */
+/** Ensures a host book has a library record, refreshing metadata without clobbering progress. */
 export async function upsertHostBook(fields: {
   name: string;
   title?: string | null;
@@ -54,7 +42,7 @@ export async function upsertHostBook(fields: {
   const id = hostBookId(fields.name);
   const existing = await getBook(id);
   if (existing) {
-    // Keep progress/favorite/addedAt; refresh the display metadata if supplied.
+    // Keep progress/favorite/addedAt; refresh display metadata if supplied.
     const next: Book = {
       ...existing,
       title: fields.title || existing.title,
@@ -68,8 +56,7 @@ export async function upsertHostBook(fields: {
     await idbPutRecord(STORE_BOOKS, next);
     return next;
   }
-  // First time this host book is opened: seed progress from the legacy `progress`
-  // store (pre-library readers saved there under the same id) for continuity.
+  // First open: seed progress from the legacy `progress` store (same id) for continuity.
   const legacy = await idbGet<{ progress?: number; exploredCharCount?: number; charCount?: number }>("progress", id).catch(() => undefined);
   const rec: Book = {
     id,
@@ -92,11 +79,7 @@ export async function upsertHostBook(fields: {
   return rec;
 }
 
-/**
- * Imports a local epub: parses its metadata, stores the blob in `bookblobs`, and
- * writes the library record. Returns the new book. Mirrors the desktop import,
- * with the picked `File` replacing the native-dialog source path.
- */
+/** Imports a local epub: parses metadata, stores the blob, writes the library record. */
 export async function importFile(file: File): Promise<Book> {
   const meta = await extractEpubMetadata(file);
   const id = crypto.randomUUID();
@@ -122,7 +105,7 @@ export async function importFile(file: File): Promise<Book> {
   return rec;
 }
 
-/** The stored epub blob for a local book (undefined for host books). */
+/** The stored epub blob for a local book; undefined for host books. */
 export async function getLocalBlob(id: string): Promise<Blob | undefined> {
   return idbGet<Blob>(STORE_BOOKBLOBS, id);
 }

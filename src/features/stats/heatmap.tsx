@@ -4,15 +4,10 @@ import { cn } from "@/lib/utils";
 import { buildHeatmapWeeks, intensityLevel, formatDuration, formatCompact } from "@/lib/stats/aggregate";
 import type { DayValue, HeatmapCell } from "@/lib/stats/aggregate";
 
-// 0 = idle, 1–4 = increasing intensity. Tailwind needs the classes spelled out
-// (no interpolation) so the JIT keeps them.
+// 0 = idle, 1–4 = increasing intensity. Classes spelled out so Tailwind's JIT keeps them.
 const LEVEL_CLASS = ["bg-muted/60", "bg-primary/25", "bg-primary/45", "bg-primary/70", "bg-primary"];
 
-/**
- * GitHub-style contribution calendar for one year. Each column is a week
- * (Sun→Sat top to bottom); cell shade is the chosen metric relative to the
- * busiest day. Clicking a day selects it.
- */
+/** GitHub-style contribution calendar. Column = week (Sun→Sat); shade = metric vs busiest day. */
 interface HeatmapProps {
   year: number;
   valueByDay: Map<string, DayValue>;
@@ -84,7 +79,7 @@ export function Heatmap({ year, valueByDay, metric, goalChars = 0, selectedDay, 
                 if (!cell) return <div key={di} className="size-2.5" />;
                 const level = intensityLevel(valueOf(cell), max);
                 const selected = cell.day === selectedDay;
-                // A small ring marks days that met the daily goal.
+                // Ring marks days that met the daily goal.
                 const metGoal = goalChars > 0 && cell.chars >= goalChars;
                 return (
                   <button

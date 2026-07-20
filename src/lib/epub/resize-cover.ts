@@ -1,19 +1,15 @@
 /**
- * Browser-side cover downscaling — the web equivalent of the desktop app's
- * main-process `resizeCover` (which used a native image lib). Covers embedded in
- * EPUBs vary wildly in size; a huge one wastes IndexedDB space and a tiny one
- * looks soft when the grid scales it up. We normalise them onto a canvas at a
- * capped width and re-encode as JPEG.
- *
- * Width is stored at ~2× the on-screen cover slot (~200px) so it stays crisp on
- * high-DPI screens instead of pixelating. Never upscales past the source.
+ * Browser-side cover downscaling (web equivalent of the desktop `resizeCover`).
+ * EPUB covers vary wildly; a huge one wastes IndexedDB space, so we normalise onto
+ * a canvas at a capped width and re-encode as JPEG. Width is ~2× the on-screen slot
+ * (~200px) to stay crisp on high-DPI. Never upscales past the source.
  */
 
 export const COVER_MAX_WIDTH = 300;
 const COVER_JPEG_QUALITY = 0.85;
 
-/** Encodes raw image bytes as a data: URL without re-sampling (the fallback when
- *  canvas decoding isn't available). */
+/** Encodes raw image bytes as a data: URL without re-sampling (fallback when
+ *  canvas decoding is unavailable). */
 function rawDataUrl(bytes: ArrayBuffer, mime: string | null): string {
   let binary = "";
   const chunk = 0x8000;
@@ -23,9 +19,9 @@ function rawDataUrl(bytes: ArrayBuffer, mime: string | null): string {
 }
 
 /**
- * Downscales cover bytes to at most `maxWidth` px wide and returns a JPEG data
- * URL. Falls back to the raw bytes (as a data URL) if the image can't be decoded
- * or drawn (e.g. no canvas/createImageBitmap). Returns null for empty input.
+ * Downscales cover bytes to at most `maxWidth` px wide, returns a JPEG data URL.
+ * Falls back to raw bytes (as a data URL) if the image can't be decoded/drawn.
+ * Null for empty input.
  */
 export async function resizeCoverToDataUrl(
   bytes: ArrayBuffer | null | undefined,

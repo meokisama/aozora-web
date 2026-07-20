@@ -1,11 +1,9 @@
 /**
  * Search-hit highlighting via the CSS Custom Highlight API.
  *
- * Uses `CSS.highlights` + `::highlight(aoz-search-hit)` rather than wrapping in
- * <mark>: a <mark> can't span ruby boundaries and would mutate the book DOM. The
- * range points at live shadow-tree text nodes, so it clears itself when the
- * paginated reader swaps a section. Placement re-walks the live content with the
- * search block model (`collectBlocks`); `baseChar` is the rendered region's
+ * Uses `CSS.highlights` rather than <mark>: a <mark> can't span ruby boundaries
+ * and would mutate the book DOM. Ranges point at live text nodes, so they clear
+ * when the paginated reader swaps a section. `baseChar` is the rendered region's
  * global start offset (0 continuous, current section start paginated).
  */
 
@@ -22,20 +20,14 @@ export function clearSearchHighlight(): void {
   if (supported()) CSS.highlights.delete(HL_NAME);
 }
 
-/**
- * Paints (or clears) the run the hover dictionary matched. The caller already
- * holds the Range (from `lookup-text.ts`'s `rangeForLength`); pass null to clear.
- */
+/** Paints (or clears, on null) the run the hover dictionary matched. */
 export function setLookupHighlight(range: Range | null): void {
   if (!supported()) return;
   if (range) CSS.highlights.set(DICT_HL_NAME, new Highlight(range));
   else CSS.highlights.delete(DICT_HL_NAME);
 }
 
-/**
- * Paints (or clears) the run currently being read aloud, growing over the
- * sentence in time with the VOICEVOX audio (karaoke). Pass null to clear.
- */
+/** Paints (or clears, on null) the run being read aloud, in sync with VOICEVOX audio. */
 export function setKaraokeHighlight(range: Range | null): void {
   if (!supported()) return;
   if (range) CSS.highlights.set(KARAOKE_HL_NAME, new Highlight(range));
@@ -63,11 +55,7 @@ function rangeForBlock(block: Block, start: number, len: number): Range | null {
   return startSet ? range : null;
 }
 
-/**
- * Highlights the search hit at `charOffset` within `rootEl`. Returns whether a
- * highlight was set. `baseChar` is the global offset of the rendered region's
- * start.
- */
+/** Highlights the search hit at `charOffset` within `rootEl`; returns whether set. */
 export function highlightSearchResult(rootEl: Element | null, charOffset: number, query: string, baseChar = 0): boolean {
   clearSearchHighlight();
   if (!rootEl || !supported()) return false;
@@ -88,8 +76,8 @@ export function highlightSearchResult(rootEl: Element | null, charOffset: number
   let from = 0;
   let idx: number;
   let matchIdx = -1;
-  // Accumulate the Japanese-char count as occurrences advance (matches fall on
-  // codepoint boundaries), rather than re-counting the prefix from 0 each hit.
+  // Accumulate JP-char count as occurrences advance (matches fall on codepoint
+  // boundaries) instead of re-counting the prefix each hit.
   let prevIdx = 0;
   let jpAcc = 0;
   while ((idx = hay.indexOf(q, from)) !== -1) {

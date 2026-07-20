@@ -12,8 +12,8 @@ export interface ExtractedEpub {
 }
 
 /**
- * Fully unzips an EPUB: reads container.xml → the OPF, then every manifest item.
- * Image items are returned as Blobs, text items (XHTML/CSS/NCX) as strings.
+ * Fully unzips an EPUB: container.xml → OPF → every manifest item. Images become
+ * Blobs, text items (XHTML/CSS/NCX) strings.
  */
 export async function extractEpub(blob: Blob): Promise<ExtractedEpub> {
   const reader = new ZipReader(new BlobReader(blob));

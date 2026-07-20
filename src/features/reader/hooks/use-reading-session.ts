@@ -10,18 +10,16 @@ import {
 import { recordSession } from "@/platform/stats";
 
 /**
- * How character accounting branches per layout mode: `continuous` is sampled per
- * tick by `advance`, `paginated` is credited per flip by `advancePaginated`, and
- * `fixed` (manga) records time only (positions are page ordinals).
+ * Char accounting per mode: `continuous` sampled per tick (`advance`),
+ * `paginated` credited per flip (`advancePaginated`), `fixed` (manga) time-only.
  */
 export type SessionMode = "continuous" | "paginated" | "fixed";
 
 /**
- * Tracks reading sessions for the stats page. Time is accrued on a 1-second tick
- * and only while active (window visible + input within IDLE_MS); idle/hidden
- * ticks count no time and don't advance the char baseline, so it resumes
- * cleanly. Character crediting per mode: see SessionMode. The reading-vs-
- * scrolling state machine and crediting rules live in lib/stats/session-tracker.
+ * Tracks reading sessions for the stats page. Time accrues on a 1s tick, only
+ * while active (visible + input within IDLE_MS); idle/hidden ticks count no time
+ * and leave the char baseline untouched so reading resumes cleanly. State machine
+ * and crediting rules live in lib/stats/session-tracker.
  */
 
 interface Session {
@@ -36,8 +34,7 @@ interface Session {
   acc: SessionAccumulator;
   /** paginated only: span accounting credited on each flip */
   pacc: PaginatedAccumulator;
-  /** paginated only: `activeMs` snapshot when the current page was entered, so a
-   *  flip's dwell = activeMs − pageEnteredActiveMs (idle/hidden already excluded) */
+  /** paginated only: `activeMs` when current page entered; flip dwell = activeMs − this */
   pageEnteredActiveMs: number;
 }
 
@@ -56,8 +53,8 @@ const IDLE_SESSION: Session = {
 };
 
 const TICK_MS = 1000;
-const IDLE_MS = 180_000; // no input for this long ⇒ stop counting time (AFK)
-const MAX_TICK_MS = 5 * TICK_MS; // cap a single tick's time (guards against timer stalls)
+const IDLE_MS = 180_000; // no input this long ⇒ stop counting (AFK)
+const MAX_TICK_MS = 5 * TICK_MS; // cap one tick's time (guards timer stalls)
 
 export function useReadingSession(bookId?: string | null) {
   const ref = useRef<Session>({ ...IDLE_SESSION });
@@ -78,7 +75,7 @@ export function useReadingSession(bookId?: string | null) {
     };
   };
 
-  // Characters read come from whichever accumulator the mode uses.
+  // Chars read from whichever accumulator the mode uses.
   const charsReadOf = (s: Session) => (s.mode === "paginated" ? s.pacc.charsAccum : s.mode === "continuous" ? s.acc.charsAccum : 0);
 
   const flush = useCallback(() => {
@@ -96,9 +93,9 @@ export function useReadingSession(bookId?: string | null) {
     }).catch(() => {});
   }, []);
 
-  // Position/activity feed from the reader. Records the latest position and marks
-  // activity. For paginated, a position change is a page flip, so the finished
-  // page's span is credited here (event-driven); continuous defers to the tick.
+  // Position/activity feed from the reader. Paginated: a position change is a flip,
+  // so the finished page's span is credited here (event-driven); continuous defers
+  // to the tick.
   const mark = useCallback(
     (pos: number, mode: SessionMode = "continuous") => {
       if (!bookId) return;
@@ -109,8 +106,7 @@ export function useReadingSession(bookId?: string | null) {
         return;
       }
       if (s.mode === "paginated" && pos !== s.currentPos) {
-        // Flip: credit the page just left, gated on how long it was dwelled on
-        // (active time only — idle/hidden never reached activeMs).
+        // Flip: credit the page just left, gated on active dwell time.
         s.pacc = advancePaginated(s.pacc, pos, s.activeMs - s.pageEnteredActiveMs);
         s.pageEnteredActiveMs = s.activeMs;
       }
@@ -120,7 +116,7 @@ export function useReadingSession(bookId?: string | null) {
     [bookId],
   );
 
-  // 1-second sampler: the single place time and characters are accrued.
+  // 1s sampler: the only place time and chars are accrued.
   const tick = useCallback(() => {
     const s = ref.current;
     if (!s.active) return;
@@ -128,14 +124,12 @@ export function useReadingSession(bookId?: string | null) {
     const elapsed = now - s.lastTickAt;
     s.lastTickAt = now;
 
-    // Don't count time while the window is hidden or the reader is idle. Leave
-    // the position baseline untouched so reading resumes cleanly.
+    // Skip hidden/idle ticks; leave the position baseline so reading resumes cleanly.
     if (document.hidden || now - s.lastActivityAt > IDLE_MS) return;
 
     s.activeMs += Math.min(elapsed, MAX_TICK_MS);
 
-    // Continuous scrolling is sampled here (the state machine decides reading vs
-    // scrolling). Paginated is credited per flip in `mark`; fixed counts no chars.
+    // Continuous is sampled here; paginated is credited per flip; fixed counts no chars.
     if (s.mode === "continuous") s.acc = advance(s.acc, s.currentPos);
   }, []);
 
@@ -144,9 +138,8 @@ export function useReadingSession(bookId?: string | null) {
     return () => clearInterval(id);
   }, [tick]);
 
-  // Treat mouse / keyboard / wheel as activity too, so reading a single
-  // paginated page (where the position is static until you flip) keeps the
-  // session alive instead of tripping the idle cutoff.
+  // Count mouse/keyboard/wheel as activity too, so dwelling on a static paginated
+  // page (position unchanged until you flip) doesn't trip the idle cutoff.
   useEffect(() => {
     const onActivity = () => {
       if (ref.current.active) ref.current.lastActivityAt = Date.now();
@@ -161,11 +154,10 @@ export function useReadingSession(bookId?: string | null) {
     };
   }, []);
 
-  // Flush when the book changes or the reader unmounts (the closing session
-  // belongs to the previous book — its id is captured in the ref at begin).
+  // Flush on book change / unmount (closing session's id was captured at begin).
   useEffect(() => flush, [bookId, flush]);
 
-  // Flush on window close so app exit doesn't lose the open session.
+  // Flush on window close so exit doesn't lose the open session.
   useEffect(() => {
     window.addEventListener("beforeunload", flush);
     return () => window.removeEventListener("beforeunload", flush);

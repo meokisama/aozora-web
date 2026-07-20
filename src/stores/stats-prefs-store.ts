@@ -1,10 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-/**
- * Reading-stats prefs (daily character target), persisted in the renderer via
- * Zustand persist, not the main process. 0 = goal off.
- */
+/** Reading-stats prefs (daily char target), persisted via Zustand. 0 = off. */
 
 export const DAILY_GOAL_OPTIONS: { value: number; label: string }[] = [
   { value: 0, label: "Off" },

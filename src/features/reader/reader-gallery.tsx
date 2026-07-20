@@ -18,11 +18,7 @@ interface Props {
 const MAX_ZOOM = 4;
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(v, hi));
 
-/**
- * Full-screen illustration viewer: a large centred image with prev/next navigation,
- * a thumbnail filmstrip, wheel-to-zoom + drag-to-pan, download, and keyboard
- * controls. "Read from here" jumps the reader to where the image sits in the text.
- */
+/** Full-screen illustration viewer: prev/next, filmstrip, wheel-zoom + drag-pan, download, keyboard nav. */
 export function ReaderGallery({ open, onOpenChange, illustrations, total, onSelect }: Props) {
   const { t } = useTranslation();
   const [index, setIndex] = useState(0);
@@ -35,18 +31,18 @@ export function ReaderGallery({ open, onOpenChange, illustrations, total, onSele
   const last = illustrations.length - 1;
   const current = illustrations[index];
 
-  // Reset to the first image each time the viewer opens.
+  // Reset to first image on open.
   useEffect(() => {
     if (open) setIndex(0);
   }, [open]);
 
-  // Reset zoom/pan whenever the shown image changes.
+  // Reset zoom/pan when the shown image changes.
   useEffect(() => {
     setScale(1);
     setOffset({ x: 0, y: 0 });
   }, [index]);
 
-  // Arrow-key navigation while open (Escape is handled by the dialog itself).
+  // Arrow-key nav while open (Escape handled by the dialog).
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -57,7 +53,7 @@ export function ReaderGallery({ open, onOpenChange, illustrations, total, onSele
     return () => window.removeEventListener("keydown", onKey);
   }, [open, last]);
 
-  // Keep the active thumbnail in view as the selection moves.
+  // Keep active thumbnail in view.
   useEffect(() => {
     thumbRefs.current[index]?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
   }, [index]);
@@ -76,7 +72,7 @@ export function ReaderGallery({ open, onOpenChange, illustrations, total, onSele
     const d = dragRef.current;
     if (!d) return;
     const stage = stageRef.current;
-    // Clamp the pan so the scaled image can't be dragged entirely out of view.
+    // Clamp pan so the scaled image can't be dragged out of view.
     const maxX = stage ? (stage.clientWidth * (scale - 1)) / 2 : Infinity;
     const maxY = stage ? (stage.clientHeight * (scale - 1)) / 2 : Infinity;
     setOffset({
@@ -100,8 +96,7 @@ export function ReaderGallery({ open, onOpenChange, illustrations, total, onSele
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/95 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0" />
         <DialogPrimitive.Content
           className="fixed inset-0 z-50 flex flex-col text-white outline-none data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0"
-          // The custom title bar's drag region (top strip) would otherwise eat
-          // clicks on the toolbar; no-drag cuts the whole viewer out of it.
+          // no-drag: keep the title bar's drag region from eating toolbar clicks.
           style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
@@ -110,7 +105,7 @@ export function ReaderGallery({ open, onOpenChange, illustrations, total, onSele
             {t("reader.illustrationsHint")}
           </DialogPrimitive.Description>
 
-          {/* Top bar: counter + actions. z-20 keeps it above the stage's nav arrows. */}
+          {/* Top bar: counter + actions. z-20 keeps it above nav arrows. */}
           <div className="relative z-20 flex shrink-0 items-center justify-between gap-3 px-4 py-2.5">
             <span className="text-xs tabular-nums text-white/70">
               {index + 1} <span className="text-white/40">/ {illustrations.length}</span>
@@ -147,7 +142,7 @@ export function ReaderGallery({ open, onOpenChange, illustrations, total, onSele
             </div>
           </div>
 
-          {/* Stage: current image, flanked by prev/next. Wheel zooms; drag pans. */}
+          {/* Stage: current image + prev/next. Wheel zooms; drag pans. */}
           <div
             ref={stageRef}
             className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden px-14"

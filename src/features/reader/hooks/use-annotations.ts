@@ -5,15 +5,13 @@ import { paintAnnotations, clearAnnotationHighlights, rangeToCharSpan, charOffse
 import { caretRangeFromPoint } from "@/lib/reader/lookup-text";
 import * as library from "@/platform/annotations";
 
-// Web port: the desktop app's `window.electronAPI.library` IPC is replaced by an
-// IndexedDB-backed platform module exposing the same annotation methods, so the
-// hook body below is unchanged from the original.
+// Web port: desktop's electronAPI.library IPC swapped for an IndexedDB module
+// with the same annotation methods, so the hook body is unchanged.
 const api = () => library;
 
 type ReaderMode = "continuous" | "paginated" | "fixed";
 
-/** Highlight editor state: anchored to a fresh selection (id null, awaiting a
- *  colour pick) or an existing highlight (id set, editable). */
+/** Highlight editor state: fresh selection (id null, awaiting colour) or existing highlight (id set). */
 export interface AnnoPopoverState {
   anchor: DOMRect;
   id: string | null;
@@ -24,9 +22,8 @@ export interface AnnoPopoverState {
   text: string;
 }
 
-/** Pending selection awaiting the highlight button: the trigger anchors to `point`
- *  (mouse-release), picking it opens the editor against `rect` (selection box). No
- *  highlight exists until then. */
+/** Pending selection awaiting the highlight button: trigger anchors to `point`
+ *  (mouse-release), picking it opens the editor against `rect`. No highlight exists yet. */
 export interface AnnoTriggerState {
   point: { x: number; y: number };
   rect: DOMRect;
@@ -49,10 +46,9 @@ interface Params {
 }
 
 /**
- * Text highlights + notes for the current book: the list, the pending-selection
- * trigger, and the colour/note editor popover. Painting is char-offset anchored
- * (CSS Custom Highlight), so ranges survive scroll/reflow; the caller repaints on
- * content rebuild and paginated section swaps via the returned `repaintAnnotations`.
+ * Text highlights + notes for the current book: list, pending-selection trigger,
+ * and colour/note editor. Painting is char-offset anchored (CSS Custom Highlight)
+ * so ranges survive scroll/reflow; caller repaints via `repaintAnnotations`.
  */
 export function useAnnotations({
   book,
@@ -70,15 +66,13 @@ export function useAnnotations({
   const [annoPopover, setAnnoPopover] = useState<AnnoPopoverState | null>(null);
   const [annoTrigger, setAnnoTrigger] = useState<AnnoTriggerState | null>(null);
 
-  // Ref mirrors so ref-only callers (the paginated onChange, scroll/flip handlers)
-  // can read current values without a dep.
+  // Ref mirrors so ref-only callers (paginated onChange, scroll/flip) read current values without a dep.
   const annotationsRef = useRef<Annotation[]>([]);
   const annoPopoverRef = useRef<AnnoPopoverState | null>(null);
   annotationsRef.current = annotations;
   annoPopoverRef.current = annoPopover;
 
-  // Load this book's highlights (repainted onto the content by the caller). The
-  // old book's list + washes clear immediately so nothing bleeds across a swap.
+  // Load this book's highlights; clear old list + washes first so nothing bleeds across a swap.
   useEffect(() => {
     clearAnnotationHighlights();
     setAnnotations([]);
@@ -96,9 +90,8 @@ export function useAnnotations({
     };
   }, [book]);
 
-  /** Repaints the highlight washes for whatever region is currently rendered
-   *  (the whole book in continuous mode, the current section in paginated). Reads
-   *  refs only, so it's stable and safe to call from the controller's onChange. */
+  /** Repaints highlight washes for the rendered region (whole book continuous, current
+   *  section paginated). Reads refs only, so stable and safe from the controller's onChange. */
   const repaintAnnotations = useCallback(() => {
     if (!readyRef.current) return;
     const shadow = hostRef.current?.shadowRoot;
@@ -110,22 +103,19 @@ export function useAnnotations({
     }
   }, [readyRef, hostRef, modeRef, controllerRef]);
 
-  // Repaint whenever the highlight set changes (add / recolour / delete), the
-  // content is rebuilt, or the feature is toggled. Continuous ranges persist
-  // across scroll/reflow, so this need not run on scroll; paginated section swaps
-  // repaint via the caller's onChange.
+  // Repaint on highlight-set change or content rebuild. Continuous ranges persist
+  // across scroll/reflow (no scroll repaint needed); paginated swaps repaint via onChange.
   useEffect(() => {
     repaintAnnotations();
   }, [annotations, parseToken, repaintAnnotations]);
 
-  // A content rebuild or mode switch invalidates the open editor / trigger anchor.
+  // Content rebuild or mode switch invalidates the open editor / trigger anchor.
   useEffect(() => {
     setAnnoPopover(null);
     setAnnoTrigger(null);
   }, [parseToken, readingMode]);
 
-  // Closes the highlight editor, persisting a changed note for an existing one.
-  // Stable (reads refs only) so scroll/flip handlers can dismiss it.
+  // Closes the editor, persisting a changed note. Stable (refs only) so scroll/flip can dismiss it.
   const closeAnnoPopover = useCallback(() => {
     const p = annoPopoverRef.current;
     if (!p) return;
@@ -145,9 +135,8 @@ export function useAnnotations({
   const clearAnnoTrigger = useCallback(() => setAnnoTrigger(null), []);
   const setPopoverNote = useCallback((note: string) => setAnnoPopover((p) => (p ? { ...p, note } : p)), []);
 
-  // Picks a colour in the editor: creates the highlight (from a fresh selection)
-  // or recolours the existing one. The highlight only lands in the DB on this
-  // first colour pick, so merely selecting text to copy never persists anything.
+  // Picks a colour: creates the highlight (fresh selection) or recolours it. First
+  // colour pick is what persists to the DB, so selecting text to copy never saves.
   const handleAnnoColor = useCallback(
     async (color: string) => {
       const p = annoPopoverRef.current;
@@ -174,7 +163,7 @@ export function useAnnotations({
         if (rec) {
           setAnnotations((prev) => [...prev, rec].sort((a, b) => a.startChar - b.startChar || a.createdAt - b.createdAt));
           setAnnoPopover({ ...p, id: rec.id, color });
-          // Drop the text selection so it doesn't sit highlighted under the wash.
+          // Drop the selection so it doesn't sit highlighted under the wash.
           (hostRef.current?.shadowRoot as ShadowRoot & { getSelection?: () => Selection | null })?.getSelection?.()?.removeAllRanges?.();
         }
       } catch (err) {
@@ -194,9 +183,8 @@ export function useAnnotations({
     }
   }, []);
 
-  // Trigger → editor: promote the pending selection into the colour/note editor,
-  // anchored to the selection box. No colour pre-selected, so picking one is what
-  // creates the highlight.
+  // Trigger → editor: promote the pending selection into the editor, anchored to
+  // the selection box. No colour pre-selected, so picking one creates the highlight.
   const openAnnoEditor = useCallback(() => {
     setAnnoTrigger((t) => {
       if (t) setAnnoPopover({ anchor: t.rect, id: null, color: "", note: "", startChar: t.startChar, endChar: t.endChar, text: t.text });
@@ -204,7 +192,7 @@ export function useAnnotations({
     });
   }, []);
 
-  /** The content root + section base char for the currently-rendered region. */
+  /** Content root + section base char for the rendered region. */
   const currentContentRoot = useCallback((): { root: Element | null; base: number } => {
     const shadow = hostRef.current?.shadowRoot;
     if (!shadow) return { root: null, base: 0 };
@@ -214,9 +202,8 @@ export function useAnnotations({
     return { root: shadow.querySelector(".aozora-content"), base: 0 };
   }, [hostRef, modeRef, controllerRef]);
 
-  // Finishing a selection surfaces the highlight trigger at the mouse-release point
-  // (not the full editor, which would cover what you read). Picking it opens the
-  // editor; ignoring it leaves the selection. Fixed-layout has no selectable text.
+  // Finishing a selection surfaces the trigger at mouse-release (not the full editor,
+  // which would cover the text). Picking it opens the editor. Fixed-layout has no selectable text.
   const handleMouseUp = useCallback(
     (e: React.MouseEvent) => {
       if (modeRef.current === "fixed") return;
@@ -238,8 +225,8 @@ export function useAnnotations({
     [currentContentRoot, clearLookup, clearFootnote, hostRef, modeRef],
   );
 
-  // Called from the reader's content-click after link/footnote handling: a click
-  // landing on an existing highlight (no active selection) opens its editor.
+  // From the content-click handler (after link/footnote): a click on an existing
+  // highlight (no active selection) opens its editor.
   const openHighlightAtPoint = useCallback(
     (e: React.MouseEvent) => {
       if (modeRef.current === "fixed") return;

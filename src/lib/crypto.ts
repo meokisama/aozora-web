@@ -1,9 +1,7 @@
 /**
- * Browser AES-256-GCM helpers (WebCrypto). Payload wire/at-rest format is
- * `iv(12) || ciphertext || tag(16)` — the same framing the backend produces for
- * served epubs, reused here to encrypt the parsed-book cache at rest. Keys are
- * the base64 per-book key handed out by the host's token endpoint. Requires a
- * secure context (HTTPS/localhost).
+ * Browser AES-256-GCM helpers (WebCrypto). Format: `iv(12) || ciphertext || tag(16)`
+ * — same framing as the backend's served epubs. Keys are the base64 per-book key
+ * from the host token endpoint. Requires a secure context (HTTPS/localhost).
  */
 
 async function importKey(keyB64: string): Promise<CryptoKey> {
@@ -27,6 +25,6 @@ export async function aesGcmDecrypt(keyB64: string, payload: ArrayBuffer): Promi
   const key = await importKey(keyB64);
   const bytes = new Uint8Array(payload);
   const iv = bytes.subarray(0, 12);
-  const body = bytes.subarray(12); // ciphertext || tag — WebCrypto expects the tag appended
+  const body = bytes.subarray(12); // ciphertext || tag (WebCrypto expects tag appended)
   return crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, body);
 }

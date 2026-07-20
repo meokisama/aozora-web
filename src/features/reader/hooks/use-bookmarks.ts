@@ -4,9 +4,8 @@ import type { Section } from "@/lib/epub/generate-html";
 import { chapterIndexAt } from "@/lib/reader/chapters";
 import * as library from "@/platform/bookmarks";
 
-// Web port: the desktop app's `window.electronAPI.library` IPC is replaced by an
-// IndexedDB-backed platform module exposing the same bookmark methods, so the
-// hook body below is unchanged from the original.
+// Web port: desktop's electronAPI.library IPC swapped for an IndexedDB module
+// with the same bookmark methods, so the hook body is unchanged.
 const api = () => library;
 
 interface Params {
@@ -17,15 +16,14 @@ interface Params {
 }
 
 /**
- * Bookmark list for the current book: loading, the suggested-name field, and
- * add/remove. Position comes from the reader's live refs (character offset +
- * total), so this stays independent of the parse/render pipeline.
+ * Bookmark list for the current book: loading, suggested-name field, add/remove.
+ * Position comes from the reader's live refs, so it's independent of the parse/render pipeline.
  */
 export function useBookmarks({ book, chapters, totalRef, charRef }: Params) {
   const [bookmarks, setBookmarks] = useState<BookmarkRecord[]>([]);
   const [nameInput, setNameInput] = useState("");
 
-  // Load this book's bookmarks (independent of the parse/render pipeline).
+  // Load this book's bookmarks.
   useEffect(() => {
     if (!book) {
       setBookmarks([]);
@@ -43,8 +41,7 @@ export function useBookmarks({ book, chapters, totalRef, charRef }: Params) {
     };
   }, [book]);
 
-  // Suggested bookmark name: current TOC chapter title + progress percentage
-  // (editable before saving). Falls back to just the percentage with no chapter.
+  // Suggested name: TOC chapter title + progress %, or just % if no chapter.
   const computeDefaultName = useCallback(() => {
     const totalChars = totalRef.current || 0;
     const char = charRef.current;
@@ -54,7 +51,7 @@ export function useBookmarks({ book, chapters, totalRef, charRef }: Params) {
     return label ? `${label}  (${pct}%)` : `${pct}%`;
   }, [chapters, totalRef, charRef]);
 
-  // Adds a bookmark at the current position with the (user-editable) name.
+  // Adds a bookmark at the current position.
   const addBookmark = useCallback(async () => {
     if (!book) return;
     const charOffset = charRef.current;
@@ -65,7 +62,7 @@ export function useBookmarks({ book, chapters, totalRef, charRef }: Params) {
       const bm = await api().addBookmark({ bookId: book.id, charOffset, progress, snippet: name });
       if (bm) {
         setBookmarks((prev) => [...prev, bm].sort((a, b) => a.charOffset - b.charOffset));
-        setNameInput(computeDefaultName()); // reset the field to a fresh default
+        setNameInput(computeDefaultName()); // reset field to fresh default
       }
     } catch (err) {
       console.error("Failed to add bookmark", err);

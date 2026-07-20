@@ -14,10 +14,7 @@ function GithubIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
-/**
- * About page: introduces the original desktop Aozora and makes clear this web app
- * is a trimmed "mini" edition built specifically for ranobe-hub.
- */
+/** About page: introduces desktop Aozora and notes this is a trimmed "mini" edition for ranobe-hub. */
 export function AboutView() {
   const { t } = useTranslation();
   return (

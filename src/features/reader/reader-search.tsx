@@ -18,11 +18,7 @@ interface Props {
   onJump: (result: DisplayResult) => void;
 }
 
-/**
- * In-book search sheet: a query field plus the list of matches. Each result
- * shows a snippet (with the matched run emphasised) and its chapter + progress,
- * and jumps to the hit's character offset on click.
- */
+/** In-book search sheet: query field plus matches; each jumps to the hit's offset. */
 export function ReaderSearch({ open, onOpenChange, query, onQueryChange, results, total, capped, onJump }: Props) {
   const { t } = useTranslation();
   const trimmed = query.trim();

@@ -3,10 +3,9 @@ import { idbGetAll, idbPut, idbDelete, registerFont, unregisterFont } from "@/li
 import { FONT_STACKS, useSettingsStore, type BuiltinFont } from "@/stores/settings-store";
 
 /**
- * User-imported reader fonts. Metadata is mirrored here for the UI; the font
- * bytes live in IndexedDB and are registered as document FontFaces (see
- * `lib/fonts/custom-fonts.ts`). The selected font's id is stored in the settings
- * store, so a removed/missing font falls back to a built-in.
+ * User-imported reader fonts. Metadata mirrored here; font bytes live in
+ * IndexedDB, registered as FontFaces (see `lib/fonts/custom-fonts.ts`).
+ * Selected id lives in settings store; missing font falls back to built-in.
  */
 
 export interface CustomFont {
@@ -41,7 +40,7 @@ export const useFontsStore = create<FontsState>((set, get) => ({
         try {
           await registerFont(f.family, f.blob);
         } catch {
-          // Skip a font file that fails to parse rather than blocking the rest.
+          // Skip a font that fails to parse; keep the rest.
         }
       }
       const customFonts = stored.map(({ id, label, family }) => ({ id, label, family }));
@@ -79,8 +78,7 @@ export const useFontsStore = create<FontsState>((set, get) => ({
   },
 }));
 
-/** Resolves a font id to its CSS font-family stack: a built-in stack, an
- *  imported font's registered family, or the mincho stack as a last resort. */
+/** Resolves a font id to a CSS font-family stack; falls back to mincho. */
 export function resolveFontStack(value: string, customFonts: CustomFont[] = []): string {
   if (value in FONT_STACKS) return FONT_STACKS[value as BuiltinFont];
   const custom = customFonts.find((f) => f.id === value);

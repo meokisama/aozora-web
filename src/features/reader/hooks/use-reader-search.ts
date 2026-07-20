@@ -22,9 +22,9 @@ interface Params {
 }
 
 /**
- * In-book search: the sheet's open state, query, and results, backed by an index
- * built lazily from the parsed HTML on first search and reused. Jumping to a hit
- * navigates in whichever mode is active and highlights the run once it's on screen.
+ * In-book search: sheet open state, query, and results, backed by an index built
+ * lazily from parsed HTML on first search and reused. Jumping to a hit navigates
+ * in the active mode and highlights it once on screen.
  */
 export function useReaderSearch({ book, chapters, total, hostRef, modeRef, charRef, parsedRef, controllerRef, jumpToChar }: Params) {
   const [searchOpen, setSearchOpen] = useState(false);
@@ -36,7 +36,7 @@ export function useReaderSearch({ book, chapters, total, hostRef, modeRef, charR
   });
   const searchIndexRef = useRef<SearchIndexEntry[] | null>(null); // lazily built on first search
 
-  // Reset on book change: the index and any highlight belong to the old book.
+  // Reset on book change: index and highlight belong to the old book.
   useEffect(() => {
     searchIndexRef.current = null;
     clearSearchHighlight();
@@ -45,7 +45,7 @@ export function useReaderSearch({ book, chapters, total, hostRef, modeRef, charR
     setSearchResults({ results: [], total: 0, capped: false });
   }, [book]);
 
-  // Queries the in-book index, built lazily from the parsed HTML once and reused.
+  // Queries the index, built lazily from parsed HTML once and reused.
   const runSearch = useCallback(
     (query: string) => {
       setSearchQuery(query);
@@ -61,8 +61,7 @@ export function useReaderSearch({ book, chapters, total, hostRef, modeRef, charR
     [parsedRef],
   );
 
-  // Jumps to a search hit and highlights it. The highlight waits until the target
-  // is on screen (the paginated controller renders its section asynchronously).
+  // Jumps to a hit and highlights it once on screen (paginated renders its section async).
   const jumpToSearchResult = useCallback(
     async (result: SearchResult) => {
       setSearchOpen(false);
@@ -89,8 +88,7 @@ export function useReaderSearch({ book, chapters, total, hostRef, modeRef, charR
     [jumpToChar, searchQuery, hostRef, modeRef, charRef, controllerRef],
   );
 
-  // Attach chapter label + progress to each hit for display (mirrors the
-  // active-chapter / bookmark-name logic).
+  // Attach chapter label + progress to each hit for display.
   const searchDisplay = useMemo(() => {
     return searchResults.results.map((r) => {
       const i = chapterIndexAt(chapters, r.charOffset);

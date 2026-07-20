@@ -1,13 +1,12 @@
 /**
  * Helpers for the fixed-layout (manga) continuous "long-strip" reader: pages are
- * stacked in one line (a vertical column or a horizontal filmstrip) and sized up
- * front from their known viewports, so their positions form a static layout the
- * viewer maps scroll offset onto. Coordinates are along the active scroll axis
- * (top for vertical, left for horizontal), so the same math serves both.
+ * stacked in one line and sized up front from their known viewports, forming a
+ * static layout the viewer maps scroll offset onto. Coordinates are along the
+ * active scroll axis (top vertical, left horizontal), so one set of math serves both.
  */
 
-/** A page's box in the strip's own (content-relative) coordinate space, measured
- *  along the scroll axis: `start` is its leading edge, `size` its extent. */
+/** A page's box in content-relative coords along the scroll axis:
+ *  `start` = leading edge, `size` = extent. */
 export interface StripBox {
   ordinal: number;
   start: number;
@@ -15,11 +14,9 @@ export interface StripBox {
 }
 
 /**
- * The ordinal of the page at a `center` offset along the scroll axis (scroll
- * position + half the viewport). Boxes are contiguous in visual order, so this is
- * the last box that starts at or before the centre — the page currently under it
- * (a centre landing in an inter-page gap resolves to the page just before, which
- * is fine). Boxes must be sorted by `start` ascending.
+ * Ordinal of the page at `center` (scroll position + half viewport). Boxes are
+ * contiguous, so it's the last box starting at or before the centre (a gap
+ * landing resolves to the page just before, which is fine). Boxes sorted by `start`.
  */
 export function ordinalAtCenter(boxes: StripBox[], center: number): number {
   if (!boxes.length) return 0;
@@ -32,10 +29,9 @@ export function ordinalAtCenter(boxes: StripBox[], center: number): number {
 }
 
 /**
- * The inclusive index span `[first, last]` of boxes intersecting the axis window
- * `[start, end]`, or null when none do. Drives strip virtualization: only pages in
- * (a padded) window are kept in the DOM. Boxes must be sorted by `start` ascending;
- * the scan is linear — fine for the few-hundred pages a book holds.
+ * Inclusive index span `[first, last]` of boxes intersecting `[start, end]`, or
+ * null if none. Drives strip virtualization: only pages in a padded window stay
+ * in the DOM. Boxes sorted by `start`; linear scan is fine for a few hundred pages.
  */
 export function visibleRange(boxes: StripBox[], start: number, end: number): [number, number] | null {
   let first = -1;

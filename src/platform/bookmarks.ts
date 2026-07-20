@@ -1,15 +1,9 @@
-/**
- * Bookmarks store — the IndexedDB replacement for the desktop app's SQLite
- * `bookmarks` table + `library:*-bookmark` IPC. Exposes the same method names the
- * reader's `use-bookmarks` hook calls (`listBookmarks` / `addBookmark` /
- * `removeBookmark`); id + createdAt are generated here as the main process did.
- */
+/** Bookmarks store (IndexedDB), replacing the desktop app's SQLite `bookmarks` table. */
 
 import type { Bookmark, AddBookmarkPayload } from "@/lib/types";
 import { idbGetAllByIndex, idbPutRecord, idbDelete, STORE_BOOKMARKS } from "./db";
 
-/** A book's bookmarks, ordered by reading position (then creation), matching the
- *  original `ORDER BY char_offset ASC, created_at ASC`. */
+/** A book's bookmarks, ordered by reading position then creation. */
 export async function listBookmarks(bookId: string): Promise<Bookmark[]> {
   const rows = await idbGetAllByIndex<Bookmark>(STORE_BOOKMARKS, "bookId", bookId);
   return rows.sort((a, b) => a.charOffset - b.charOffset || a.createdAt - b.createdAt);

@@ -11,8 +11,7 @@ import {
 } from "./opf";
 import { locateOpf } from "./locate-opf";
 
-// No web workers: simpler/more robust under the Electron renderer + Vite, and
-// metadata reads only touch a few small entries.
+// No web workers: simpler under Electron renderer + Vite; metadata reads are tiny.
 configure({ useWebWorkers: false });
 
 export function resolveCoverHref(
@@ -21,7 +20,7 @@ export function resolveCoverHref(
   metaKey: string,
   spineRefs: XmlNode[],
 ): string | null {
-  // EPUB3: a manifest item flagged properties="cover-image".
+  // EPUB3: manifest item with properties="cover-image".
   const byProperty = manifestItems.find((item) => item["@_properties"] === "cover-image");
   if (byProperty) return byProperty["@_href"];
 
@@ -33,8 +32,8 @@ export function resolveCoverHref(
     if (item?.["@_href"]) return item["@_href"];
   }
 
-  // Fallback for fixed-layout/manga (e.g. OMF) with no cover metadata: the first
-  // spine item is the cover, when it's an image.
+  // Fallback (fixed-layout/manga, e.g. OMF) with no cover metadata: first spine item
+  // if it's an image.
   const firstIdref = spineRefs[0]?.["@_idref"];
   if (firstIdref) {
     const item = manifestItems.find((it) => it["@_id"] === firstIdref);
@@ -52,8 +51,8 @@ export interface EpubMetadata {
   coverMime: string | null;
 }
 
-/** Extracts display metadata + cover from an EPUB blob, reading only the entries
- *  needed (container.xml, the OPF, and the cover image). */
+/** Extracts display metadata + cover from an EPUB blob, reading only the needed
+ *  entries (container.xml, OPF, cover image). */
 export async function extractEpubMetadata(blob: Blob): Promise<EpubMetadata> {
   const reader = new ZipReader(new BlobReader(blob));
   try {

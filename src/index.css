@@ -34,8 +34,7 @@
   src: url("./assets/noto-sans-jp-japanese-700-normal.woff2") format("woff2");
 }
 
-/* Merriweather — serif for Latin-script (Vietnamese) books like Hako light
-   novels. Vietnamese subset first (diacritics), Latin subset for the rest. */
+/* Merriweather — serif for Latin/Vietnamese books; Vietnamese subset first (diacritics). */
 @font-face {
   font-family: "Merriweather";
   font-weight: 400;

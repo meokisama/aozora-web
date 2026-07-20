@@ -31,13 +31,12 @@ export interface ParsedBook {
 }
 
 /**
- * Parses an EPUB blob into the reader payload: flattened HTML, combined
- * stylesheet, image blobs (keyed by path), chapter sections, char count. This is
- * the expensive step; results are cached in IndexedDB by the caller.
+ * Parses an EPUB blob into the reader payload: flattened HTML, combined stylesheet,
+ * image blobs (keyed by path), chapter sections, char count. The expensive step;
+ * caller caches results in IndexedDB.
  *
- * Fixed-layout books (manga/comics) produce the same flattened HTML plus extra
- * fields describing how to render the wrappers as spreads: page order +
- * `page-spread` sides (`pages`), progression direction (`ppd`), and base viewport.
+ * Fixed-layout books add fields for rendering wrappers as spreads: page order +
+ * `page-spread` sides (`pages`), progression direction (`ppd`), base viewport.
  */
 export async function parseBook(blob: Blob): Promise<ParsedBook> {
   const { contents, contentsDirectory, result } = await extractEpub(blob);
@@ -55,10 +54,9 @@ export async function parseBook(blob: Blob): Promise<ParsedBook> {
   const author = firstText(metadata?.["dc:creator"]) || "";
   const ppd = getPageProgressionDirection(contents);
   // Vertical (tategaki) detection. PPD=rtl and the 電書協 `vrtl` class are strong
-  // signals. Calibre/KFX conversions instead declare `writing-mode: vertical-rl`
-  // on arbitrary paragraph classes (no `vrtl`, sometimes no PPD), so also consult
-  // the book stylesheet — but only when PPD isn't an explicit `ltr`, so a
-  // horizontal book with a stray vertical caption isn't flipped wholesale.
+  // signals. Calibre/KFX instead put `writing-mode: vertical-rl` on arbitrary
+  // classes (no `vrtl`, sometimes no PPD), so also consult the stylesheet — but only
+  // when PPD isn't explicit `ltr`, so a stray vertical caption doesn't flip the book.
   const cssDeclaresVertical = /(?:-webkit-|-epub-)?writing-mode\s*:\s*(?:vertical-[rl]l|tb-[rl]l)/i.test(styleSheet);
   const vertical = ppd === "rtl" || /\bvrtl\b/.test(elementHtml) || (ppd !== "ltr" && cssDeclaresVertical);
 
@@ -71,7 +69,7 @@ export async function parseBook(blob: Blob): Promise<ParsedBook> {
   let bookViewport: { width: number; height: number } | null = null;
   let spreadPairs: string[][] | null = null;
   if (fixedLayout) {
-    // Wholly fixed-layout (manga) → dedicated FixedLayoutView renders it.
+    // Wholly fixed-layout (manga) → FixedLayoutView renders it.
     bookViewport = getBookViewport(contents);
     let ordinal = 0;
     pages = spine.map((p) => ({
@@ -81,9 +79,8 @@ export async function parseBook(blob: Blob): Promise<ParsedBook> {
       ordinal: ordinal++,
     }));
   } else {
-    // Reflowable book that may embed fixed-layout image pages (light novel with
-    // manga-style colour spreads). Pre-compute which spine wrappers pair into a
-    // two-page spread; reflowable text pages never pair.
+    // Reflowable book that may embed fixed-layout image pages (light novel colour
+    // spreads). Pre-compute which spine wrappers pair; text pages never pair.
     const packageLayout = getRenditionLayout(contents);
     const flow = spine.map((p) => ({
       idref: p.idref,

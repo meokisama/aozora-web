@@ -1,8 +1,7 @@
 /**
- * Pure zoom/pan math for the fixed-layout (manga) paginated viewer. The DOM side
- * lives in `use-fxl-zoom`; here we only compute the transform state so it can be
- * unit-tested. Coordinates are relative to the content's centre (transform-origin
- * is centre centre), and translation is applied before scale:
+ * Pure zoom/pan math for the fixed-layout (manga) viewer (DOM side in
+ * `use-fxl-zoom`); split out so it's unit-testable. Coords are relative to the
+ * content centre (transform-origin centre), translate applied before scale:
  * `translate(tx, ty) scale(scale)`.
  */
 
@@ -19,7 +18,7 @@ export const MAX_SCALE = 4;
 
 const clamp = (v: number, lo: number, hi: number) => {
   const r = Math.min(hi, Math.max(lo, v));
-  return r === 0 ? 0 : r; // normalise -0 → 0 (cleaner state; avoids "-0px" transforms)
+  return r === 0 ? 0 : r; // normalise -0 → 0 (avoids "-0px" transforms)
 };
 
 export function clampScale(scale: number, min = MIN_SCALE, max = MAX_SCALE): number {
@@ -27,9 +26,9 @@ export function clampScale(scale: number, min = MIN_SCALE, max = MAX_SCALE): num
 }
 
 /**
- * Clamps the pan so the scaled content can't be dragged past its own edges: with a
- * centred origin the content overflows the `w×h` box by `(scale-1)` on each axis,
- * half of that in each direction. At scale 1 the only valid offset is 0.
+ * Clamps pan so scaled content can't be dragged past its edges: with a centred
+ * origin, content overflows the `w×h` box by `(scale-1)` per axis, half each
+ * direction. At scale 1 the only valid offset is 0.
  */
 export function clampPan(state: ZoomState, w: number, h: number): ZoomState {
   const maxX = Math.max(0, ((state.scale - 1) * w) / 2);
@@ -38,10 +37,9 @@ export function clampPan(state: ZoomState, w: number, h: number): ZoomState {
 }
 
 /**
- * Zooms to `nextScale` while keeping the point `(px, py)` — measured from the
- * content centre — pinned under the cursor. Derived from `px = t + s·c` (screen
- * offset of a content point) solved so the same `c` maps to the same `px` after the
- * scale change. Result is scale-clamped, then pan-clamped to `w×h`.
+ * Zooms to `nextScale` keeping point `(px, py)` (from content centre) pinned under
+ * the cursor. From `px = t + s·c` solved so the same `c` maps to the same `px`
+ * after scaling. Scale-clamped, then pan-clamped to `w×h`.
  */
 export function zoomAtPoint(state: ZoomState, nextScale: number, px: number, py: number, w: number, h: number): ZoomState {
   const scale = clampScale(nextScale);

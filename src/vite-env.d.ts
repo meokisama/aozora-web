@@ -6,10 +6,8 @@ interface ImportMetaEnv {
   /** API base for the access-token endpoint (`<base>/reader/token`). */
   readonly VITE_API_BASE?: string;
   /**
-   * `"true"` → `?book=<name>` fetches a token/key from `<VITE_API_BASE>/reader/token`
-   * before loading (token-gated, encrypted serving; the ranobe-hub setup).
-   * Unset/anything else → names are served as plain static files straight from
-   * `<VITE_BOOKSHELF_BASE>/<name>.epub`, no backend needed (bibi-style).
+   * `"true"` → token-gated, encrypted serving (fetch key from `/reader/token`).
+   * Otherwise → plain static `<VITE_BOOKSHELF_BASE>/<name>.epub`, no backend.
    */
   readonly VITE_REQUIRE_TOKEN?: string;
   /** GA4 measurement id (`G-XXXXXXX`). Unset → analytics disabled. */
@@ -18,8 +16,4 @@ interface ImportMetaEnv {
 
 interface ImportMeta {
   readonly env: ImportMetaEnv;
-}
-
-interface Window {
-  dataLayer: unknown[];
 }

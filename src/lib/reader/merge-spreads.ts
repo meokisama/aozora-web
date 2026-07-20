@@ -1,12 +1,9 @@
 /**
- * Merges paired fixed-layout image wrappers into a single `.aoz-spread` section
- * in place, for the paginated reader. Mixed books (reflowable text + manga-style
- * colour pages) carry the two pages of a spread as adjacent spine wrappers;
- * grouping them into one text-free section makes the controller render them on
- * one page (it lays text-free sections out as a single centred page). CSS in
- * `reader-styles` places the halves side by side (right-to-left for RTL books).
+ * Merges paired fixed-layout image wrappers into one `.aoz-spread` section in
+ * place, for the paginated reader. Grouping the two spread pages into one
+ * text-free section makes the controller render them as a single centred page;
+ * CSS places the halves side by side (RTL for RTL books).
  *
- * @param container    holds the spine wrappers as direct children
  * @param spreadPairs  `[[openerId, closerId], …]` (wrapper ids, opener first)
  */
 export function mergeSpreadSections(container: HTMLElement, spreadPairs: string[][] | null, ppd: string): void {
@@ -25,9 +22,8 @@ export function mergeSpreadSections(container: HTMLElement, spreadPairs: string[
     spread.id = `aoz-spread-${openerId.replace(/^aoz-/, "")}`;
     spread.dataset.ppd = ppd;
     container.insertBefore(spread, opener);
-    // Opener first; CSS flex-direction (row-reverse for rtl) puts it on the
-    // correct side. The original wrappers keep their ids so TOC/href jumps and
-    // character bookkeeping still resolve them.
+    // Opener first; CSS flex-direction (row-reverse for rtl) sides it correctly.
+    // Wrappers keep their ids so TOC/href jumps and char bookkeeping still resolve.
     spread.appendChild(opener);
     spread.appendChild(closer);
   }

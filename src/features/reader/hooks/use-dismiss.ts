@@ -1,10 +1,9 @@
 import { useEffect, type RefObject } from "react";
 
 /**
- * Dismisses a floating element on Escape or a pointer press outside it. Attached
- * in an effect (after the opening click has settled) and only while `active`, so
- * it never self-closes on the click that opened it. The outside check runs in the
- * capture phase so it fires before the pressed element's own handlers.
+ * Dismisses a floating element on Escape or an outside pointer press. Only while
+ * `active`, so it never self-closes on the opening click. Outside check runs in
+ * capture phase, before the pressed element's own handlers.
  */
 export function useDismiss(active: boolean, ref: RefObject<HTMLElement | null>, onClose: () => void): void {
   useEffect(() => {

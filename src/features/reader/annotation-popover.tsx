@@ -8,13 +8,11 @@ import { useAnchoredPosition } from "./hooks/use-anchored-position";
 import { useDismiss } from "./hooks/use-dismiss";
 
 interface Props {
-  /** Bounding box of the selection (new) or clicked highlight (editing); null closed. */
+  /** Bounding box of selection (new) or clicked highlight (editing); null closed. */
   anchor: DOMRect | null;
-  /** Currently-selected colour key. */
   color: string;
-  /** The note text (empty string when none). */
   note: string;
-  /** Whether this is a fresh selection (no delete affordance yet). */
+  /** Fresh selection (no delete affordance yet). */
   isNew: boolean;
   onColor: (key: string) => void;
   onNote: (value: string) => void;
@@ -22,17 +20,11 @@ interface Props {
   onClose: () => void;
 }
 
-/**
- * Floating highlight editor: a row of colour swatches plus an optional note. Picking
- * a swatch creates the highlight (new) or recolours it (editing); the note is
- * saved by the parent when the popover closes. Placed against the selection/marker
- * like the footnote popup, and dismissed on Escape or a click outside.
- */
+/** Floating highlight editor: colour swatches + optional note. Note saved by parent on close. */
 export function AnnotationPopover({ anchor, color, note, isNew, onColor, onNote, onDelete, onClose }: Props) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
-  // The editor is fixed-size (2-row, non-resizable textarea), so re-place only
-  // when the anchor or the delete-button's presence changes — not per keystroke.
+  // Fixed-size editor: re-place only on anchor/delete-button change, not per keystroke.
   const pos = useAnchoredPosition(ref, anchor, isNew);
 
   useDismiss(!!anchor, ref, onClose);

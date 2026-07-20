@@ -14,17 +14,14 @@ const STATUS_VARIANT: Record<ReadingStatus, "outline" | "secondary" | "default">
   finished: "default",
 };
 
-/**
- * A single book as a list row: cover, title/author, status, progress, last-read.
- * Hovering reveals a "⋯" actions menu; right-clicking opens the same actions.
- */
+/** A single book as a list row. Hover reveals a "⋯" menu; right-click opens the same actions. */
 export function BookRow({ book, onOpen }: { book: Book; onOpen?: (book: Book) => void }) {
   const { t } = useTranslation();
   const status = readingStatus(book);
   const pct = Math.round((book.progress ?? 0) * 100);
   const lastRead = relativeTime(book.lastOpenedAt, t);
 
-  // Fall back to the template placeholder when the cover is missing or fails.
+  // Fall back to placeholder when cover is missing or fails.
   const [coverError, setCoverError] = useState(false);
   useEffect(() => setCoverError(false), [book.coverDataUrl]);
   const coverSrc = !book.coverDataUrl || coverError ? bookTemplate : book.coverDataUrl;

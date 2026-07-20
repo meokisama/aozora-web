@@ -1,23 +1,19 @@
 /**
  * In-book full-text search.
  *
- * No separate text store: the flattened book HTML (cached in IndexedDB) is the
- * only text source. We walk it like the reading-position model
- * (`getParagraphNodes` + `getCharacterCount`), grouping into block units and
- * recording each block's cumulative char offset — the same `exploredCharCount`
- * the reader navigates by, so a hit's `charOffset` feeds `jumpToChar` /
- * `restoreToChar` directly in either mode.
+ * No separate text store: the flattened book HTML is the only source. Walked like
+ * the reading-position model, grouped into blocks each recording its cumulative
+ * char offset (the `exploredCharCount` the reader navigates by), so a hit's
+ * `charOffset` feeds `jumpToChar` / `restoreToChar` in either mode.
  *
- * Matching normalization is length-preserving (every transform is 1:1), so a
- * normalized-string index is also a valid raw-text index — keeping snippets and
- * highlight ranges aligned. `<rt>` readings are excluded by `getParagraphNodes`,
- * so queries match base text across furigana.
+ * Normalization is length-preserving (every transform is 1:1), so the normalized
+ * index doubles as a raw-text index — keeping snippets and highlight ranges
+ * aligned. `<rt>` readings are excluded, so queries match base text across furigana.
  */
 
 import { getParagraphNodes, getCharacterCount, isNodeGaiji, countJapanese } from "@/lib/epub/dom-utils";
 
-/** Cap on returned (not counted) matches, so a very common query can't build a
- *  huge result list. The true total is reported separately. */
+/** Cap on returned (not counted) matches; true total reported separately. */
 export const MAX_RESULTS = 500;
 
 export interface Block {
@@ -40,7 +36,7 @@ export interface SearchResult {
   post: string;
 }
 
-// Inline tags that don't break a paragraph: text on either side belongs to the
+// Inline tags that don't break a paragraph: text on either side stays in the
 // same searchable block (so a query spanning e.g. a ruby base still matches).
 const INLINE_TAGS = new Set([
   "RUBY",
@@ -74,7 +70,7 @@ const INLINE_TAGS = new Set([
   "SAMP",
 ]);
 
-/** The nearest non-inline ancestor of a node (its "paragraph"), bounded by root. */
+/** Nearest non-inline ancestor of a node (its "paragraph"), bounded by root. */
 export function blockAncestor(node: Node, root: Element): Element {
   let el: Element | null = node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as Element);
   while (el && el !== root && el.parentElement && INLINE_TAGS.has(el.tagName)) {
@@ -84,10 +80,9 @@ export function blockAncestor(node: Node, root: Element): Element {
 }
 
 /**
- * Length-preserving normalization for matching: fold full-width ASCII to
- * half-width, the ideographic space to a regular one, any whitespace to a single
- * space, then lower-case. Every replacement is one code point for one, so the
- * result is the same length as the input and indices stay aligned.
+ * Length-preserving normalization: fold full-width ASCII to half-width, any
+ * whitespace (incl. ideographic space) to a single space, then lower-case. Every
+ * replacement is 1:1, so length is preserved and indices stay aligned.
  */
 export function normalize(str: string | null | undefined): string {
   if (!str) return "";
@@ -102,10 +97,9 @@ export function normalize(str: string | null | undefined): string {
 }
 
 /**
- * Walks the rendered (or detached) content into block-level text units. Each
- * block carries its cumulative character offset, its raw text, and the live text
- * nodes it spans (used to build highlight ranges). Image-only blocks (no text)
- * are dropped — there is nothing to search or highlight in them.
+ * Walks content into block-level text units, each carrying its cumulative char
+ * offset, raw text, and the live text nodes it spans (for highlight ranges).
+ * Image-only (text-free) blocks are dropped.
  */
 export function collectBlocks(rootEl: Element): Block[] {
   const nodes = getParagraphNodes(rootEl);
@@ -128,10 +122,8 @@ export function collectBlocks(rootEl: Element): Block[] {
   return blocks.filter((b) => b.text.trim().length > 0);
 }
 
-/**
- * Builds the searchable index from the flattened book HTML. Pre-normalizes each
- * block once so repeated queries (per keystroke) don't re-scan the raw text.
- */
+/** Builds the search index; pre-normalizes each block so per-keystroke queries
+ *  don't re-scan raw text. */
 export function buildSearchIndex(elementHtml: string): SearchIndexEntry[] {
   const div = document.createElement("div");
   div.innerHTML = elementHtml;
@@ -152,10 +144,7 @@ function makeSnippet(text: string, idx: number, len: number, ctx = 24): { pre: s
   };
 }
 
-/**
- * Searches the index for every occurrence of `query`. Each result's `charOffset`
- * feeds jumpToChar.
- */
+/** Finds every occurrence of `query`; each result's `charOffset` feeds jumpToChar. */
 export function searchIndex(
   index: SearchIndexEntry[],
   query: string,
@@ -169,9 +158,9 @@ export function searchIndex(
   for (const blk of index) {
     let from = 0;
     let idx: number;
-    // Accumulate the Japanese-char count as matches advance instead of
-    // re-counting the prefix from 0 each hit (was O(matches × blockLen)). Match
-    // boundaries fall on codepoint boundaries, so this is exactly additive.
+    // Accumulate JP-char count as matches advance instead of re-counting the
+    // prefix each hit (was O(matches × blockLen)); match boundaries fall on
+    // codepoint boundaries, so this is exactly additive.
     let prevIdx = 0;
     let jpAcc = 0;
     while ((idx = blk.normalized.indexOf(q, from)) !== -1) {

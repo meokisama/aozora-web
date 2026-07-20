@@ -2,9 +2,9 @@ import { TextWriter, type Entry } from "@zip.js/zip.js";
 import { xmlParser, type OpfContents } from "./opf";
 
 /**
- * Resolves an EPUB's OPF package document from a map of ZIP entries: reads
- * META-INF/container.xml, follows its first rootfile to the OPF, and parses it.
- * Shared by the full extractor and the metadata-only reader.
+ * Resolves an EPUB's OPF from ZIP entries: reads META-INF/container.xml, follows
+ * its first rootfile to the OPF, and parses it. Shared by the full extractor and
+ * the metadata-only reader.
  */
 export async function locateOpf(fileMap: Map<string, Entry>): Promise<{ contents: OpfContents; opfPath: string; opfXml: string }> {
   const containerEntry = fileMap.get("META-INF/container.xml");

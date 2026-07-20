@@ -1,5 +1,4 @@
-/** DOM helpers for character counting (weights chapters for the reading-position
- *  model) and for cleaning up image references. */
+/** DOM helpers for character counting and image-reference cleanup. */
 
 export function isElementGaiji(el: Element): boolean {
   return Array.from(el.classList).some((c) => c.includes("gaiji"));
@@ -9,7 +8,7 @@ export function isNodeGaiji(node: Node): node is HTMLImageElement {
   return node instanceof HTMLImageElement && isElementGaiji(node);
 }
 
-// Inline wrappers a glyph image may sit inside while still being "inline with text".
+// Inline wrappers a glyph image may sit inside while staying inline with text.
 const INLINE_WRAPPERS = new Set(["SPAN", "A", "B", "I", "EM", "STRONG", "SUP", "SUB", "SMALL", "U", "RB", "RUBY"]);
 
 function hasTextSibling(el: Element): boolean {
@@ -18,16 +17,15 @@ function hasTextSibling(el: Element): boolean {
   return Array.from(parent.childNodes).some((n) => n !== el && n.nodeType === Node.TEXT_NODE && !!n.textContent?.trim());
 }
 
-/** A glyph image (gaiji) sits inline among text: used as a ruby base, or sharing
- *  its line with a text sibling (climbing out through inline wrappers). A block's
- *  lone standalone image is an illustration, not a glyph. */
+/** True if a gaiji image is inline among text (ruby base or has a text sibling,
+ *  climbing through inline wrappers). A block's lone image is an illustration. */
 function isInlineGlyphImage(img: Element): boolean {
   let el: Element = img;
   while (el.parentElement) {
     const parent = el.parentElement;
     if (parent.tagName === "RUBY" || parent.tagName === "RB") return true;
     if (hasTextSibling(el)) return true;
-    if (!INLINE_WRAPPERS.has(parent.tagName)) break; // reached a block — stop climbing
+    if (!INLINE_WRAPPERS.has(parent.tagName)) break; // hit a block — stop
     el = parent;
   }
   return false;
@@ -35,25 +33,21 @@ function isInlineGlyphImage(img: Element): boolean {
 
 /**
  * Tags context-detected gaiji with `aoz-gaiji`. Calibre/KFX give gaiji arbitrary
- * class names (`class_s8x`, sized by book CSS), so `isElementGaiji` misses them and
- * the illustration cap blows them up + pollutes the gallery. The marker makes every
- * consumer correct at once: the reader's `img:not([class*="gaiji"])` rule skips them,
- * the gallery excludes them, they count as one character. Mirrors bibi, which never
- * overrides inline image sizing.
+ * class names, so `isElementGaiji` misses them and the illustration cap blows them
+ * up + pollutes the gallery. The marker fixes every consumer at once (reader skip
+ * rule, gallery exclusion, one-char count). Mirrors bibi.
  */
 export function tagGaijiImages(root: Element): void {
   for (const img of Array.from(root.querySelectorAll("img,image"))) {
-    if (isElementGaiji(img)) continue; // already class-tagged
+    if (isElementGaiji(img)) continue;
     if (isInlineGlyphImage(img)) img.classList.add("aoz-gaiji");
   }
 }
 
-// A gaiji image counts as one character; everything else counts only the
-// Japanese codepoints (kana, kanji, fullwidth alnum, iteration marks).
+// Matches non-Japanese codepoints (kept: kana, kanji, fullwidth alnum, iteration marks).
 const isNotJapaneseRegex = /[^0-9A-Z○◯々-〇〻ぁ-ゖゝ-ゞァ-ヺー０-９Ａ-Ｚｦ-ﾝ\p{Radical}\p{Unified_Ideograph}]+/gimu;
 
-/** Counts Japanese codepoints, matching the reading-position model so a substring
- *  offset lines up with the offsets the reader navigates by. */
+/** Counts Japanese codepoints (matches the reader's position model). */
 export function countJapanese(str: string | null | undefined): number {
   if (!str) return 0;
   return Array.from(str.replace(isNotJapaneseRegex, "")).length;
@@ -64,7 +58,7 @@ export function getCharacterCount(node: Node): number {
   return countJapanese(node.textContent);
 }
 
-/** Collects text nodes (and gaiji images), skipping ruby readings + hidden nodes. */
+/** Collects text nodes and gaiji images, skipping ruby readings + hidden nodes. */
 export function getParagraphNodes(node: Node): Node[] {
   const keep = (n: Node): boolean => {
     if (n.nodeName === "RT") return false;
@@ -92,7 +86,7 @@ export function countCharacters(containerEl: Node): number {
   return getParagraphNodes(containerEl).reduce((sum, node) => sum + getCharacterCount(node), 0);
 }
 
-/** Drops image references not packed into the book so they don't render broken. */
+/** Strips image refs not packed into the book so they don't render broken. */
 export function clearAllBadImageRef(el: Element): void {
   const clear = (tag: Element, attr: string) => {
     const value = tag.getAttribute(attr);
@@ -105,7 +99,7 @@ export function clearAllBadImageRef(el: Element): void {
   Array.from(el.getElementsByTagName("img")).forEach((t) => clear(t, "src"));
 }
 
-/** Normalizes xlink:href (and friends) on SVG <image> elements to plain href. */
+/** Normalizes xlink:href (etc.) on SVG <image> elements to plain href. */
 export function fixXHtmlHref(el: Element): void {
   Array.from(el.getElementsByTagName("image"))
     .filter((tag) => !tag.getAttributeNames().some((x) => x === "href"))

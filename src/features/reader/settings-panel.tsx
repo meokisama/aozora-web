@@ -50,18 +50,16 @@ interface SmoothSliderProps {
   max: number;
   step: number;
   onCommit: (value: number) => void;
-  /** Formats the live value shown beside the label (defaults to the raw number). */
+  /** Formats the live value shown beside the label. */
   format?: (value: number) => React.ReactNode;
 }
 
-/** A slider that drags smoothly against local state and commits to the store only
- *  when the drag ends — so live re-layout/re-flow fires once on release instead of
- *  on every pixel. The value readout tracks the drag live. */
+/** Slider that drags against local state, committing to the store only on drag end
+ *  so re-layout fires once on release, not per pixel. */
 function SmoothSlider({ label, value, min, max, step, onCommit, format }: SmoothSliderProps) {
   const [local, setLocal] = useState(value);
 
-  // Follow external changes (e.g. reset to defaults); during a drag the store isn't
-  // touched, so `value` is stable and this won't fight the local value.
+  // Follow external changes (e.g. reset); `value` is stable during a drag, so no conflict.
   useEffect(() => setLocal(value), [value]);
 
   return (
@@ -86,29 +84,25 @@ const segmented = {
   className: "w-full",
 } as const;
 
-// ToggleGroup lets you click the active item to clear it; ignore empty updates
-// so a value stays selected.
+// ToggleGroup can clear the active item; ignore empty updates so a value stays selected.
 const guard =
   <T extends string>(setter: (next: T) => void) =>
   (next: T) =>
     next && setter(next);
 
-/** Reader settings drawer. Changes apply live (the reader subscribes to the
- *  store) and persist across sessions. */
+/** Reader settings drawer. Changes apply live and persist across sessions. */
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   fixedLayout?: boolean;
-  /** Effective writing direction; gates the horizontal-only layout controls and
-   *  drives which Text Direction chip is highlighted while the setting is auto. */
+  /** Effective writing direction; gates horizontal-only controls and the auto chip highlight. */
   vertical?: boolean;
 }
 
 export function ReaderSettingsPanel({ open, onOpenChange, fixedLayout = false, vertical = true }: Props) {
   const { t } = useTranslation();
-  // The parent owns only the settings shown for every book (theme, manga spread,
-  // reset); the reflowable-only fields live in ReflowableFields, which reads them
-  // from the store itself so they aren't threaded through as props.
+  // Parent owns only the always-shown settings (theme, manga spread, reset);
+  // reflowable-only fields live in ReflowableFields, reading the store directly.
   const theme = useSettingsStore((s) => s.theme);
   const mangaSpread = useSettingsStore((s) => s.mangaSpread);
   const mangaReadingMode = useSettingsStore((s) => s.mangaReadingMode);
@@ -142,8 +136,7 @@ export function ReaderSettingsPanel({ open, onOpenChange, fixedLayout = false, v
             </ToggleGroup>
           </Field>
 
-          {/* Fixed-layout (manga) books only expose reading mode + page spread;
-              font/furigana/flow settings don't apply to image pages. */}
+          {/* Manga books expose only reading mode + spread; text settings don't apply to image pages. */}
           {fixedLayout ? (
             <>
               <Field label={t("reader.readingModeGroup")}>
@@ -156,8 +149,7 @@ export function ReaderSettingsPanel({ open, onOpenChange, fixedLayout = false, v
                 </ToggleGroup>
               </Field>
 
-              {/* Paginated flips spreads; continuous scrolls a single strip whose
-                  axis and page size are adjustable. */}
+              {/* Paginated flips spreads; continuous scrolls one strip with adjustable axis/size. */}
               {mangaReadingMode === "paginated" ? (
                 <Field label={t("reader.pageLayout")}>
                   <ToggleGroup {...segmented} value={mangaSpread} onValueChange={guard(setMangaSpread)}>
@@ -218,8 +210,7 @@ export function ReaderSettingsPanel({ open, onOpenChange, fixedLayout = false, v
   );
 }
 
-/** The settings only meaningful for reflowable (text) books. Reads its own store
- *  slice; `vertical` (the effective direction) gates the horizontal-only rows. */
+/** Settings for reflowable (text) books; `vertical` gates horizontal-only rows. */
 function ReflowableFields({ vertical }: { vertical: boolean }) {
   const { t } = useTranslation();
   const fontSize = useSettingsStore((s) => s.fontSize);

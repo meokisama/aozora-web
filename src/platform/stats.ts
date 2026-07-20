@@ -1,11 +1,7 @@
 /**
- * Reading-stats store — the IndexedDB replacement for the desktop app's
- * `stats:*` IPC + the SQLite aggregation queries in `main/services/library-store`.
- *
- * Sessions are appended to `STORE_SESSIONS` (one record per completed session);
- * `getStats()` reads them all and computes the same four aggregations SQLite did,
- * in JS. Day/hour bucketing uses LOCAL calendar time to match SQLite's
- * `date(…, 'localtime')` / `strftime('%H', …, 'localtime')`.
+ * Reading-stats store — IndexedDB replacement for the desktop app's SQLite stats.
+ * Sessions are appended to `STORE_SESSIONS`; `getStats()` reads them all and
+ * computes the aggregations in JS. Day/hour bucketing uses LOCAL calendar time.
  */
 
 import { idbGetAll, idbPutRecord, STORE_SESSIONS } from "./db";
@@ -13,16 +9,12 @@ import { listBooks } from "./library";
 import { toDayKey } from "@/lib/stats/aggregate";
 import type { ReadingSession, StatsOverview, DailyActivity, HourlyActivity, PerBookStats, Stats } from "@/lib/types";
 
-/** A stored reading session (the appended record; `id` is its own key). */
+/** A stored reading session; `id` is its own key. */
 interface StoredSession extends ReadingSession {
   id: string;
 }
 
-/**
- * Records one completed reading session. Skips no-op sessions (open-and-close)
- * so they don't pollute the heatmap / counts — mirrors `main/stats.ts`.
- * Returns true if a session was stored, false if it was a no-op.
- */
+/** Records a completed session. Skips no-ops (open-and-close). Returns whether stored. */
 export async function recordSession(session: ReadingSession): Promise<boolean> {
   const durationMs = Math.round(session?.durationMs ?? 0);
   const charsRead = Math.round(session?.charsRead ?? 0);
@@ -38,16 +30,12 @@ export async function recordSession(session: ReadingSession): Promise<boolean> {
   return true;
 }
 
-/** The local hour-of-day (0–23) of an epoch-ms timestamp. */
+/** Local hour-of-day (0–23) of an epoch-ms timestamp. */
 function hourOf(ms: number): number {
   return new Date(ms).getHours();
 }
 
-/**
- * All-time totals across every session. Mirrors `getStatsOverview`:
- * SUM(chars_read), SUM(duration_ms), COUNT(*), COUNT(DISTINCT local day),
- * MIN(started_at) (null when there are no sessions).
- */
+/** All-time totals: chars, ms, session count, distinct active days, first session (null if none). */
 function computeOverview(sessions: StoredSession[]): StatsOverview {
   let totalChars = 0;
   let totalMs = 0;
@@ -62,11 +50,7 @@ function computeOverview(sessions: StoredSession[]): StatsOverview {
   return { totalChars, totalMs, sessionCount: sessions.length, activeDays: days.size, firstAt };
 }
 
-/**
- * Per-day activity, bucketed by LOCAL calendar day 'YYYY-MM-DD', oldest-first.
- * Mirrors `getDailyActivity`: SUM(chars), SUM(ms), COUNT(*), COUNT(DISTINCT
- * book_id) — where COUNT(DISTINCT) ignores NULL book ids, as in SQLite.
- */
+/** Per-day activity by local day, oldest-first: chars, ms, sessions, distinct books (null ids ignored). */
 function computeDaily(sessions: StoredSession[]): DailyActivity[] {
   const map = new Map<string, { chars: number; ms: number; sessions: number; books: Set<string> }>();
   for (const s of sessions) {
@@ -86,11 +70,7 @@ function computeDaily(sessions: StoredSession[]): DailyActivity[] {
     .sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0));
 }
 
-/**
- * Activity grouped by LOCAL hour-of-day (0–23), ordered by hour. Mirrors
- * `getHourlyActivity`: only hours that actually occur are returned (the view
- * fills the 24 buckets itself).
- */
+/** Activity by local hour-of-day, ordered by hour. Only hours that occur are returned. */
 function computeHourly(sessions: StoredSession[]): HourlyActivity[] {
   const map = new Map<number, { chars: number; ms: number }>();
   for (const s of sessions) {
@@ -107,11 +87,8 @@ function computeHourly(sessions: StoredSession[]): HourlyActivity[] {
 }
 
 /**
- * Per-book totals for sessions with a non-null book id, joined to the current
- * library title/author, ordered by time read desc. Mirrors `getPerBookStats` +
- * the view's join: books no longer in the library are dropped (the desktop's
- * LEFT JOIN kept them null, but the view only renders matched books), so we keep
- * only groups whose book still exists.
+ * Per-book totals (non-null book id), joined to current library title/author,
+ * ordered by time read desc. Books no longer in the library are dropped.
  */
 async function computePerBook(sessions: StoredSession[]): Promise<PerBookStats[]> {
   const map = new Map<string, { chars: number; ms: number; sessions: number; lastAt: number }>();
@@ -134,17 +111,13 @@ async function computePerBook(sessions: StoredSession[]): Promise<PerBookStats[]
   const result: PerBookStats[] = [];
   for (const [bookId, b] of map) {
     const book = byId.get(bookId);
-    if (!book) continue; // book removed from the library — drop it
+    if (!book) continue; // removed from library — drop
     result.push({ bookId, title: book.title, author: book.author, chars: b.chars, ms: b.ms, sessions: b.sessions, lastAt: b.lastAt });
   }
   return result.sort((a, b) => b.ms - a.ms);
 }
 
-/**
- * One round-trip returning everything the stats page needs: overview totals,
- * per-day / per-hour activity, and per-book totals. Reads every session and
- * computes the aggregations in JS (SQLite did this in the desktop app).
- */
+/** One round-trip for the stats page: overview, per-day, per-hour, per-book totals. */
 export async function getStats(): Promise<Stats> {
   const sessions = await idbGetAll<StoredSession>(STORE_SESSIONS);
   return {

@@ -1,22 +1,12 @@
-/**
- * Fetches a book's EPUB bytes into a Blob for `parseBook`. The book is a
- * plaintext `.epub` at a URL, authorised with the host's short-lived token
- * (sent as a header, so it stays out of URLs/logs).
- */
+/** Fetches a book's EPUB bytes into a Blob, authorised via a header token. */
 
 import { aesGcmDecrypt } from "@/lib/crypto";
 import type { WebBook } from "./types";
 
-/** Download progress: bytes received and the total when known (`Content-Length`
- *  present), else `null` — the caller shows MB downloaded instead of a percent. */
+/** Download progress; `total` is null when `Content-Length` is absent. */
 export type DownloadProgress = { loaded: number; total: number | null };
 
-/**
- * Streams the response body so callers can report download progress — the
- * dominant wait for large (100MB+) epubs. Falls back to a plain `arrayBuffer()`
- * read if the body isn't a readable stream. Returns the raw (still-encrypted for
- * host books) bytes as a single Uint8Array.
- */
+/** Streams the body to report progress; falls back to `arrayBuffer()` if not a stream. */
 async function readBytes(res: Response, onProgress?: (p: DownloadProgress) => void): Promise<Uint8Array> {
   const lenHeader = res.headers.get("Content-Length");
   const total = lenHeader ? Number(lenHeader) || null : null;
@@ -49,8 +39,7 @@ export async function readBookBlob(book: WebBook, onProgress?: (p: DownloadProgr
   const res = await fetch(book.url, book.token ? { headers: { "X-Reader-Token": book.token } } : undefined);
   if (!res.ok) throw new Error(`Failed to fetch book (${res.status}).`);
   const bytes = await readBytes(res, onProgress);
-  // Host-served books arrive AES-256-GCM encrypted (iv||ciphertext||tag) and are
-  // decrypted here in memory; absolute/external URLs have no key and are plain.
+  // Host books arrive AES-256-GCM encrypted (iv||ciphertext||tag); external URLs have no key.
   if (!book.key) return new Blob([bytes as BlobPart]);
   return new Blob([await aesGcmDecrypt(book.key, bytes.buffer as ArrayBuffer)]);
 }

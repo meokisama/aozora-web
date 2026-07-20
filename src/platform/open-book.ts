@@ -1,9 +1,7 @@
 /**
- * Resolves a book (a `?book=` host name or a stored library record) into a
- * `WebBook` the reader can open: for host books it resolves the epub URL and
- * fetches a fresh short-lived token/key; for local books it just marks the
- * source (the reader reads the blob from IndexedDB). Host books are auto-added
- * to the library on open (see `upsertHostBook`).
+ * Resolves a `?book=` host name or a library record into a `WebBook` for the
+ * reader: host books get a URL + fresh token/key; local books just mark the
+ * source. Host books are auto-added to the library on open.
  */
 
 import * as library from "./library";
@@ -14,34 +12,27 @@ import type { Book } from "@/lib/types";
 const API_BASE = (import.meta.env.VITE_API_BASE || "/api").replace(/\/+$/, "");
 const BOOKSHELF_BASE = (import.meta.env.VITE_BOOKSHELF_BASE || "/uploads/ebooks").replace(/\/+$/, "");
 
-/** When set, `?book=<name>` fetches a token/key from the host before loading
- *  (token-gated, encrypted serving). Off by default, in which case names are
- *  served as plain static files straight from the bookshelf (bibi-style). */
+/** When set, `?book=` fetches a token/key first (encrypted serving); off = plain static files. */
 const REQUIRE_TOKEN = import.meta.env.VITE_REQUIRE_TOKEN === "true";
 
 const isAbsolute = (s: string) => /^https?:\/\//i.test(s);
 
-/** Hako (Vietnamese light-novel) epubs are embedded by absolute URL under a
- *  `/hako/` path. They get their own reader settings profile (see settings-store). */
+/** Hako (Vietnamese light-novel) epubs live under `/hako/` and get their own settings profile. */
 const isHako = (nameOrUrl: string) => /\/hako\//i.test(nameOrUrl);
 
-/** Activates the reader settings profile a book should open with, so the reader
- *  reads the right prefs before it mounts. */
+/** Activates the settings profile a book should open with, before the reader mounts. */
 function activateProfileFor(nameOrUrl: string): void {
   useSettingsStore.getState().setActiveProfile(isHako(nameOrUrl) ? "hako" : "default");
 }
 
-/** Resolves the `?book=` param to an epub URL. Absolute URLs pass through; a bare
- *  name maps into the host bookshelf with a `.epub` extension. */
+/** Resolves `?book=` to an epub URL; absolute URLs pass through, bare names map into the bookshelf. */
 function resolveEpubUrl(book: string): string {
   if (isAbsolute(book)) return book;
   const name = /\.epub$/i.test(book) ? book : `${book}.epub`;
   return `${BOOKSHELF_BASE}/${name}`;
 }
 
-/** Requests a short-lived access token + decryption key for a host-served book.
- *  Skipped (returns nothing → plaintext static fetch) when token-gating is off,
- *  or for absolute external URLs, which the host doesn't gate/encrypt. */
+/** Requests a short-lived token + decryption key; skipped when gating is off or the URL is external. */
 async function fetchToken(book: string): Promise<{ token?: string; key?: string }> {
   if (!REQUIRE_TOKEN || isAbsolute(book)) return {};
   const res = await fetch(`${API_BASE}/reader/token?book=${encodeURIComponent(book)}`);
@@ -51,8 +42,7 @@ async function fetchToken(book: string): Promise<{ token?: string; key?: string 
   return { token: data.token, key: data.key };
 }
 
-/** Opens a host book by its `?book=` name: fetches a token, auto-adds/refreshes
- *  its library record, and returns the WebBook (progress restored from the record). */
+/** Opens a host book by `?book=` name: fetches a token, upserts its record, returns the WebBook. */
 export async function openHostByName(name: string): Promise<WebBook> {
   activateProfileFor(name);
   const { token, key } = await fetchToken(name);
@@ -60,8 +50,7 @@ export async function openHostByName(name: string): Promise<WebBook> {
   return { ...rec, source: "host", url: resolveEpubUrl(name), token, key };
 }
 
-/** Opens a stored library record (from the grid). Local books read from IndexedDB;
- *  host books re-resolve their URL + fetch a fresh token. */
+/** Opens a stored library record; local books read from IndexedDB, host books re-resolve + re-token. */
 export async function openLibraryBook(book: Book): Promise<WebBook> {
   activateProfileFor(book.filePath);
   if (book.source === "local") return { ...book, source: "local", url: "" };

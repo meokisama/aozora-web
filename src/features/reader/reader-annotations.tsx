@@ -12,12 +12,7 @@ interface Props {
   onRemove: (id: string) => void;
 }
 
-/**
- * Highlights sheet: the list of saved highlights (colour dot + selected snippet +
- * any note + progress), each jumping to its position or deletable. Colour and note
- * are edited in-place from the reader (click a highlight); this panel is the
- * overview / jump list.
- */
+/** Highlights sheet: overview/jump list of saved highlights (colour + snippet + note + progress). */
 export function ReaderAnnotations({ open, onOpenChange, annotations, onJump, onRemove }: Props) {
   const { t } = useTranslation();
   return (

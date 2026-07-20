@@ -1,11 +1,9 @@
 /**
- * IndexedDB cache for parsed EPUB content. Derived, re-creatable data, so it
- * lives in the renderer rather than the main-process source of truth.
+ * IndexedDB cache for parsed EPUB content (derived, re-creatable data).
  *
- * Host-served books carry a per-book key (from the token endpoint); their cache
- * entry is stored AES-256-GCM **encrypted** so the fully-parsed, readable book
- * can't just be exported from DevTools → Application → IndexedDB. Books without
- * a key (absolute/external URLs, already public) are stored as plain objects.
+ * Host books carry a per-book key; their entry is stored AES-256-GCM encrypted so
+ * the parsed book can't be exported from DevTools. Keyless books (public URLs)
+ * are stored as plain objects.
  */
 
 import type { ParsedBook } from "@/lib/epub/parse-book";
@@ -13,13 +11,9 @@ import { aesGcmEncrypt, aesGcmDecrypt } from "@/lib/crypto";
 
 const DB_NAME = "aozora-reader";
 const STORE = "books";
-// v3: added renditionSpread (book-level OPF spread mode) for the fixed-layout viewer.
-// v4: added title (dc:title) so the reader can show the real book title in the browser tab.
-// v5: cache entries for host books are now encrypted (stored as a Blob).
-// v6: added author (dc:creator) so host books populate their library record's
-//     author (powers the sidebar author browser + per-book stats).
-// Pre-release policy is forward-only — drop the old cache rather than migrate, so
-// previously-opened books re-parse and pick up the new fields/format.
+// v3: renditionSpread (fixed-layout viewer). v4: title (dc:title). v5: host entries
+// encrypted (Blob). v6: author (dc:creator).
+// Forward-only: bumps drop the old cache rather than migrate, so books re-parse.
 const DB_VERSION = 6;
 
 function openDb(): Promise<IDBDatabase> {
@@ -59,9 +53,8 @@ interface BlobManifestEntry {
   len: number;
 }
 
-/** Flattens a ParsedBook (including its image Blobs) into one byte buffer:
- *  `[u32 metaLen][meta JSON][blob bytes…]`, meta carrying every non-blob field
- *  plus a manifest describing where each blob sits. */
+/** Flattens a ParsedBook into one buffer: `[u32 metaLen][meta JSON][blob bytes…]`,
+ *  meta holding non-blob fields plus a manifest locating each blob. */
 async function encodeParsed(parsed: ParsedBook): Promise<Uint8Array> {
   const manifest: BlobManifestEntry[] = [];
   const chunks: Uint8Array[] = [];
@@ -101,8 +94,8 @@ function decodeParsed(buf: ArrayBuffer): ParsedBook {
   return { ...rest, blobs } as unknown as ParsedBook;
 }
 
-/** Returns the cached parsed book, or null on miss. `keyB64` decrypts host books;
- *  an encrypted entry with no key available is treated as a miss. */
+/** Returns the cached book, or null on miss. `keyB64` decrypts host books; an
+ *  encrypted entry with no key is treated as a miss. */
 export async function getCachedBook(id: string, keyB64?: string): Promise<ParsedBook | null> {
   const value = await runTx<Blob | ParsedBook>("readonly", (store) => store.get(id));
   if (!value) return null;
@@ -111,7 +104,7 @@ export async function getCachedBook(id: string, keyB64?: string): Promise<Parsed
     try {
       return decodeParsed(await aesGcmDecrypt(keyB64, await value.arrayBuffer()));
     } catch {
-      return null; // wrong key / corrupt entry → re-parse
+      return null; // wrong key / corrupt → re-parse
     }
   }
   return value as ParsedBook;

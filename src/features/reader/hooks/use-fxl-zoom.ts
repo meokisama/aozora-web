@@ -1,43 +1,37 @@
 import { useMemo, useRef, type RefObject } from "react";
 import { IDENTITY, MAX_SCALE, clampPan, clampScale, zoomAtPoint, type ZoomState } from "@/lib/reader/zoom";
 
-/** Scale a double-click/tap zooms to (and back to 1 when already zoomed). */
+/** Scale a double-click zooms to (toggles back to 1 when zoomed). */
 const DBLCLICK_SCALE = 2.5;
-/** Wheel-zoom sensitivity: e^(-deltaY·k) per notch, so zoom is multiplicative. */
+/** Wheel-zoom sensitivity: e^(-deltaY·k), so zoom is multiplicative. */
 const WHEEL_ZOOM_K = 0.002;
 
 export interface FxlZoomHandle {
-  /** Point the zoom at the current spread element (resets to fit). Pass null when
-   *  leaving paginated mode so the handlers go inert. */
+  /** Point zoom at the spread element (resets to fit); null makes handlers inert. */
   setTarget: (el: HTMLElement | null) => void;
-  /** Whether the content is currently magnified (pan/consume-wheel active). */
   isZoomed: () => boolean;
-  /** Wheel: Ctrl/⌘ (or trackpad pinch) zooms at the cursor; a plain wheel pans when
-   *  zoomed. Returns true if it consumed the event — the caller flips pages only on
-   *  false. */
+  /** Ctrl/⌘+wheel (or pinch) zooms at cursor; plain wheel pans when zoomed. Returns
+   *  true if consumed — caller flips pages only on false. */
   handleWheel: (e: WheelEvent) => boolean;
-  /** Double-click toggles between fit and DBLCLICK_SCALE, centred on the cursor. */
   handleDoubleClick: (e: React.MouseEvent) => void;
-  /** Begin a drag-to-pan (no-op unless zoomed); tracks the pointer on window. */
+  /** Drag-to-pan (no-op unless zoomed); tracks pointer on window. */
   handlePointerDown: (e: React.PointerEvent) => void;
 }
 
 /**
- * Zoom & pan for the fixed-layout paginated viewer. Holds the transform state in
- * refs and writes it straight to the target element (no React re-render), so
- * dragging stays at native speed. Gestures: Ctrl/⌘+wheel and trackpad pinch (which
- * Chromium delivers as Ctrl+wheel) zoom at the cursor; double-click toggles; drag
- * pans while zoomed. The maths lives in `lib/reader/zoom` (unit-tested); this hook
- * only bridges it to the DOM. Zoom resets whenever `setTarget` is called — the
- * viewer rebuilds the spread on every flip/resize, so a page turn returns to fit.
+ * Zoom & pan for the fixed-layout paginated viewer. State in refs, written
+ * straight to the DOM (no re-render) so dragging stays native-speed. Chromium
+ * delivers trackpad pinch as Ctrl+wheel. Maths lives in `lib/reader/zoom`.
+ * `setTarget` resets zoom — the viewer rebuilds the spread each flip/resize, so a
+ * page turn returns to fit.
  */
 export function useFxlZoom(stageRef: RefObject<Element | null>): FxlZoomHandle {
   const targetRef = useRef<HTMLElement | null>(null);
   const stateRef = useRef<ZoomState>(IDENTITY);
-  const baseRef = useRef<{ w: number; h: number }>({ w: 0, h: 0 }); // unscaled content size, for pan bounds
+  const baseRef = useRef<{ w: number; h: number }>({ w: 0, h: 0 }); // unscaled size, for pan bounds
 
   return useMemo<FxlZoomHandle>(() => {
-    // Push the current transform onto the target (and reflect it in the cursor).
+    // Push the transform onto the target and update the cursor.
     const apply = () => {
       const el = targetRef.current;
       if (!el) return;
@@ -58,8 +52,7 @@ export function useFxlZoom(stageRef: RefObject<Element | null>): FxlZoomHandle {
       apply();
     };
 
-    // Cursor position relative to the content centre (≈ stage centre, where the
-    // spread is centred), used as the zoom anchor.
+    // Cursor position relative to stage centre (the zoom anchor).
     const pointFromCenter = (clientX: number, clientY: number) => {
       const rect = stageRef.current?.getBoundingClientRect();
       if (!rect) return { px: 0, py: 0, w: baseRef.current.w, h: baseRef.current.h };
@@ -93,7 +86,7 @@ export function useFxlZoom(stageRef: RefObject<Element | null>): FxlZoomHandle {
           set(clampPan({ scale: stateRef.current.scale, tx: stateRef.current.tx - e.deltaX, ty: stateRef.current.ty - e.deltaY }, w, h));
           return true;
         }
-        return false; // at fit → let the caller flip pages
+        return false; // at fit → caller flips pages
       },
 
       handleDoubleClick: (e) => {

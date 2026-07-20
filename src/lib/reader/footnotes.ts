@@ -1,9 +1,7 @@
 /**
- * Footnote detection for the reader. An EPUB footnote is a noteref <a> in the
- * prose linking (#id) to a note body elsewhere in the document. We build an
- * id→html map once at load so the popup can show a note regardless of which
- * section is currently rendered: paginated mode keeps only the current section
- * live, and endnotes often sit in a different section than their reference.
+ * Footnote detection. Builds an id→html map once at load so the popup works
+ * regardless of which section is rendered (paginated mode keeps only the current
+ * section live, and endnotes often live in a different section than their ref).
  */
 
 const NOTE_TYPES = new Set(["footnote", "endnote", "rearnote", "note"]);
@@ -15,26 +13,25 @@ function epubTypes(el: Element): string[] {
     .filter(Boolean);
 }
 
-/** A note body: an epub:type note token, or the matching ARIA doc role. */
+/** Note body: an epub:type note token or matching ARIA doc role. */
 function isNoteBody(el: Element): boolean {
   if (epubTypes(el).some((t) => NOTE_TYPES.has(t))) return true;
   const role = el.getAttribute("role");
   return role === "doc-footnote" || role === "doc-endnote";
 }
 
-/** A noteref: the in-prose marker that links to a note body. */
+/** Noteref: the in-prose marker linking to a note body. */
 function isNoteref(a: Element): boolean {
   if (epubTypes(a).includes("noteref")) return true;
   return a.getAttribute("role") === "doc-noteref";
 }
 
 /**
- * Scans flattened reader HTML (object URLs already swapped in) and returns a map
- * of fragment id → note inner HTML. Bodies are found two ways and merged:
- * (1) elements that declare note semantics (epub:type/role) — the EPUB3 norm;
- * (2) <aside> targets reached from a noteref link — catches books that mark the
- * link but leave the aside untyped. Back-links inside notes point at prose
- * markers (not <aside>), so they never pollute the map.
+ * Maps fragment id → note inner HTML from flattened reader HTML. Bodies found
+ * two ways: (1) elements declaring note semantics (epub:type/role); (2) <aside>
+ * targets reached from a noteref link — catches books that type the link but not
+ * the aside. Back-links inside notes point at prose markers, not <aside>, so they
+ * don't pollute the map.
  */
 export function collectFootnotes(html: string): Map<string, string> {
   const map = new Map<string, string>();

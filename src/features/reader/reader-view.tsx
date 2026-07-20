@@ -40,13 +40,12 @@ import { toggleFullscreen } from "@/platform/fullscreen";
 
 const FURIGANA_CLASSES = ["aoz-furigana-hide", "aoz-furigana-partial", "aoz-furigana-toggle", "aoz-furigana-full"];
 
-/** Effective writing direction: the user's override, or the book's own when "auto". */
+/** Effective writing direction: user override, or the book's own when "auto". */
 function resolveVertical(mode: WritingMode, bookVertical: boolean): boolean {
   return mode === "auto" ? bookVertical : mode === "vertical";
 }
 
-/** Reflects the furigana mode as a class on the content root; "show" clears it
- *  so the book's own furigana styling applies untouched. */
+/** Reflect furigana mode as a class on the content root; "show" clears it so the book's own styling applies. */
 function applyFuriganaClass(root: Element | null | undefined) {
   if (!root) return;
   root.classList.remove(...FURIGANA_CLASSES);
@@ -54,7 +53,7 @@ function applyFuriganaClass(root: Element | null | undefined) {
   if (mode && mode !== "show") root.classList.add(`aoz-furigana-${mode}`);
 }
 
-/** Click-to-reveal for the toggle/full/partial furigana modes. Delegated on the
+/** Click-to-reveal for toggle/full/partial furigana modes. Delegated on the
  *  persistent content root so it survives paginated section swaps. */
 function bindRubyReveal(root: Element | null | undefined) {
   if (!root) return;
@@ -64,14 +63,13 @@ function bindRubyReveal(root: Element | null | undefined) {
     const mode = useSettingsStore.getState().furiganaMode;
     if (mode === "show" || mode === "hide") return;
     if (mode === "toggle") ruby.classList.toggle("reveal-rt");
-    else ruby.classList.add("reveal-rt"); // partial, full: reveal and keep
+    else ruby.classList.add("reveal-rt"); // partial/full: reveal and keep
   });
 }
 
 const formatMB = (bytes: number) => `${(bytes / 1_048_576).toFixed(1)} MB`;
 
-/** Download overlay for large epubs: a determinate bar + "X% • loaded / total"
- *  when Content-Length is known, else an indeterminate bar + MB downloaded. */
+/** Download overlay: determinate bar + "X% • loaded/total" when Content-Length is known, else indeterminate + MB. */
 function LoadingProgress({ download }: { download: DownloadProgress }) {
   const { t } = useTranslation();
   const { loaded, total } = download;
@@ -95,11 +93,9 @@ function LoadingProgress({ download }: { download: DownloadProgress }) {
 }
 
 /**
- * Reader shell. The book is parsed once (or loaded from the IndexedDB cache) and
- * rendered inside a shadow root so the book's own CSS stays isolated. Continuous
- * and paginated layouts share that parsed content without re-parsing.
- *
- * Reading position is a character offset (exploredCharCount), so it survives
+ * Reader shell. Book is parsed once (or loaded from IndexedDB cache) and rendered in
+ * a shadow root so its CSS stays isolated; continuous/paginated layouts share the
+ * parsed content. Position is a character offset (exploredCharCount) so it survives
  * re-flow and mode switches; persisted (debounced) and restored on next open.
  */
 export function ReaderView() {
@@ -135,18 +131,18 @@ export function ReaderView() {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const wheelTsRef = useRef(0);
   const readyRef = useRef(false);
-  const footnotesRef = useRef<Map<string, string>>(new Map()); // id → note inner HTML
+  const footnotesRef = useRef<Map<string, string>>(new Map()); // id → note HTML
 
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [bookTitle, setBookTitle] = useState(""); // real EPUB <dc:title>, resolved after parse
-  const [download, setDownload] = useState<DownloadProgress | null>(null); // null = not downloading (cached or done)
+  const [download, setDownload] = useState<DownloadProgress | null>(null); // null = not downloading
   const [parseToken, setParseToken] = useState(0); // bumped when parsed content is ready
   const [fixedLayout, setFixedLayout] = useState(false); // manga / fixed-layout book
-  // Effective writing direction (see resolveVertical); drives the host overflow axis.
+  // Effective writing direction (see resolveVertical); drives host overflow axis.
   const [vertical, setVertical] = useState(true);
   const [sections, setSections] = useState<Section[]>([]);
   const [currentChar, setCurrentChar] = useState(0);
-  const [pageInfo, setPageInfo] = useState<{ page: number; totalPages: number } | null>(null); // paginated mode
+  const [pageInfo, setPageInfo] = useState<{ page: number; totalPages: number } | null>(null); // paginated
   const [tocOpen, setTocOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
@@ -155,22 +151,20 @@ export function ReaderView() {
   const [illustrations, setIllustrations] = useState<Illustration[]>([]);
   const [footnote, setFootnote] = useState<{ html: string; anchor: DOMRect } | null>(null);
 
-  // Mirrors whether any reader overlay (panel/gallery) is open, so the global
-  // page-flip key handler can stand down instead of flipping pages behind it.
-  // Assigned below, once the search hook has surfaced its `searchOpen` state.
+  // Whether any reader overlay is open, so the page-flip key handler stands down
+  // instead of flipping behind it. Assigned below, once searchOpen exists.
   const panelOpenRef = useRef(false);
 
   const total = totalRef.current;
-  // Fixed-layout position is a page ordinal, so the last page (total-1) is 100%;
-  // reflowable position is a character offset out of the total.
+  // Fixed-layout: page ordinal, so last page (total-1) is 100%. Reflowable: char offset / total.
   const progressPct = total ? Math.round((fixedLayout && total > 1 ? currentChar / (total - 1) : currentChar / total) * 100) : 0;
 
-  // Chapters that carry a TOC label (sub-sections fold into their parent).
+  // Chapters carrying a TOC label (sub-sections fold into their parent).
   const chapters = useMemo(() => sections.filter((s) => s.label), [sections]);
   const activeChapterIndex = useMemo(() => chapterIndexAt(chapters, currentChar), [chapters, currentChar]);
   const activeChapterId = activeChapterIndex >= 0 ? chapters[activeChapterIndex].reference : null;
 
-  /** Persists the current position to IndexedDB. */
+  /** Persist the current position to IndexedDB. */
   const persist = useCallback(() => {
     const totalChars = totalRef.current;
     if (!book || !totalChars) return;
@@ -179,7 +173,7 @@ export function ReaderView() {
     void saveProgress(book.id, { exploredCharCount, charCount: totalChars, progress, lastOpenedAt: Date.now() });
   }, [book]);
 
-  /** Scrolls the continuous reader to the tracked character (or the book start). */
+  /** Scroll the continuous reader to the tracked character (or book start). */
   const restoreContinuous = useCallback((vert: boolean) => {
     const host = hostRef.current;
     if (!host) return;
@@ -188,14 +182,13 @@ export function ReaderView() {
     if (char > 0 && totalChars > 0) {
       scrollToChar(host, anchors, vert, char);
     } else if (vert) {
-      host.scrollLeft = host.scrollWidth; // vertical-rl begins at the right edge
+      host.scrollLeft = host.scrollWidth; // vertical-rl starts at the right edge
     } else {
       host.scrollTop = 0;
     }
   }, []);
 
-  /** After a continuous-mode jump settles, read the centred character and persist
-   *  it. Run inside a rAF so the scroll has landed before measuring. */
+  /** After a continuous jump settles (in rAF, so scroll has landed), read the centred char and persist. */
   const commitContinuousChar = useCallback(() => {
     const host = hostRef.current;
     if (!host) return;
@@ -205,16 +198,14 @@ export function ReaderView() {
   }, [persist]);
 
   const clearFootnote = useCallback(() => setFootnote(null), []);
-  // The web port has no hover dictionary, so there's no lookup popup to clear;
-  // the highlights hook still expects the callback, so pass a stable no-op.
+  // No hover dictionary in the web port; the highlights hook still wants the callback, so pass a stable no-op.
   const clearLookup = useCallback(() => {}, []);
 
-  // Reading-session tracking for the stats page (accrues active time + chars read).
+  // Reading-session tracking for the stats page (active time + chars read).
   const { mark: markSession } = useReadingSession(book?.id);
 
-  // Text highlights + notes: list, pending-selection trigger, and colour/note
-  // editor. Char-offset anchored, so the shell repaints on content rebuild and
-  // paginated section swaps via the returned repaintAnnotations.
+  // Text highlights + notes: list, pending-selection trigger, colour/note editor.
+  // Char-offset anchored; repaintAnnotations re-paints on rebuild and section swaps.
   const {
     annotations,
     annoPopover,
@@ -241,7 +232,7 @@ export function ReaderView() {
     clearFootnote,
   });
 
-  // Receives position updates from the paginated controller.
+  // Position updates from the paginated controller.
   const onPagedChange = useCallback(
     (state: PaginatedState) => {
       charRef.current = state.char;
@@ -249,9 +240,9 @@ export function ReaderView() {
       setPageInfo({ page: state.page, totalPages: state.totalPages });
       markSession(state.char, "paginated");
       setFootnote(null);
-      clearAnnoTrigger(); // the pending selection flipped away
-      closeAnnoPopover(); // its anchored selection flipped away
-      repaintAnnotations(); // the new section's highlights (previous section's cleared)
+      clearAnnoTrigger(); // pending selection flipped away
+      closeAnnoPopover(); // anchored selection flipped away
+      repaintAnnotations(); // new section's highlights (previous cleared)
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = setTimeout(persist, 800);
     },
@@ -259,7 +250,7 @@ export function ReaderView() {
   );
 
   // Position updates from the fixed-layout viewer: a 0-based page ordinal. Progress
-  // reaches 1 on the last page so finished manga count as read.
+  // hits 1 on the last page so finished manga count as read.
   const onFixedChange = useCallback(
     (ordinal: number, totalPages: number) => {
       charRef.current = ordinal;
@@ -274,17 +265,17 @@ export function ReaderView() {
     [book, markSession],
   );
 
-  // Jumps to a character offset, in whichever mode is active.
+  // Jump to a character offset, in whichever mode is active.
   const jumpToChar = useCallback(
     (char: number) => {
       setBookmarksOpen(false);
       charRef.current = char;
       if (modeRef.current === "fixed") {
-        fixedRef.current?.jumpToOrdinal(char); // emits onChange → updates state + saves
+        fixedRef.current?.jumpToOrdinal(char); // emits onChange → state + save
         return;
       }
       if (modeRef.current === "paginated") {
-        controllerRef.current?.restoreToChar(char); // emits onChange → updates state + saves
+        controllerRef.current?.restoreToChar(char); // emits onChange → state + save
         return;
       }
       const host = hostRef.current;
@@ -295,8 +286,8 @@ export function ReaderView() {
     [commitContinuousChar],
   );
 
-  // Bookmarks and in-book search hang off the live position refs and jumpToChar;
-  // each owns its own list/query state (loaded + reset per book internally).
+  // Bookmarks and in-book search hang off the position refs and jumpToChar; each
+  // owns its list/query state (loaded + reset per book internally).
   const { bookmarks, nameInput, setNameInput, computeDefaultName, addBookmark, removeBookmark } = useBookmarks({
     book,
     chapters,
@@ -317,8 +308,8 @@ export function ReaderView() {
 
   panelOpenRef.current = tocOpen || settingsOpen || bookmarksOpen || searchOpen || galleryOpen || annotationsOpen;
 
-  // Expose the reader area's pixel size as inherited CSS vars so illustrations
-  // can be capped against it, and re-paginate the page-flip reader on resize.
+  // Expose the reader area's pixel size as CSS vars (illustrations cap against it),
+  // and re-paginate the page-flip reader on resize.
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
@@ -335,7 +326,7 @@ export function ReaderView() {
     return () => ro.disconnect();
   }, []);
 
-  // --- Load: parse (or load cached) once per book, independent of mode. ------
+  // --- Load: parse (or load cached) once per book, independent of mode. ---
   useEffect(() => {
     if (!book) return;
     let cancelled = false;
@@ -363,10 +354,9 @@ export function ReaderView() {
       try {
         let parsed = await getCachedBook(book.id, book.key);
         if (!parsed) {
-          // Local (imported) books read their epub blob from IndexedDB; host
-          // books stream it over HTTP with a download-progress bar (the dominant
-          // wait for large epubs). Once the bytes are in, clearing `download`
-          // flips the overlay to the "Processing…" (decrypt + parse) phase.
+          // Local books read the epub blob from IndexedDB; host books stream it over
+          // HTTP with a progress bar. Once bytes are in, clearing `download` flips the
+          // overlay to the decrypt+parse phase.
           let blob: Blob;
           if (book.source === "local") {
             const local = await getLocalBlob(book.id);
@@ -381,8 +371,8 @@ export function ReaderView() {
           setDownload(null);
           parsed = await parseBook(blob);
           await putCachedBook(book.id, parsed, book.key);
-          // Populate the host book's library cover from the epub (once, while we
-          // hold the decrypted bytes) — downscaled so the grid stays crisp.
+          // Populate the host book's library cover from the epub while we hold the
+          // decrypted bytes — downscaled for the grid.
           if (book.source !== "local") {
             const coverBlob = blob;
             void extractCover(coverBlob)
@@ -394,14 +384,12 @@ export function ReaderView() {
         }
         if (cancelled) return;
 
-        // Reflect the real EPUB title in the browser tab and the reader header
-        // once known; the original document title is restored on unmount/book
-        // change. Falls back to the filename-derived title if the EPUB has none.
+        // Reflect the real EPUB title in the tab + header once known (original title
+        // restored on unmount/book change); falls back to the filename title.
         setBookTitle(parsed.title || book.title);
         if (parsed.title) document.title = parsed.title;
-        // Refresh the host book's library record with its real title/author once
-        // parsed (the record was auto-added under the `?book=` filename on open,
-        // with no metadata — so the author powers the sidebar + per-book stats).
+        // Refresh the host book's library record with its real title/author (the
+        // record was auto-added under the `?book=` filename, with no metadata).
         if (book.source !== "local" && (parsed.title || parsed.author)) {
           void upsertHostBook({
             name: book.filePath,
@@ -415,8 +403,7 @@ export function ReaderView() {
         parsedRef.current = parsed;
         htmlRef.current = html;
         footnotesRef.current = parsed.fixedLayout ? new Map() : collectFootnotes(html);
-        // Gallery images share the object URLs above, so their lifetime is tied
-        // to this book load (revoked together on unmount/book change).
+        // Gallery images share the object URLs above (revoked together on unmount/book change).
         setIllustrations(parsed.fixedLayout ? [] : collectIllustrations(parsed.elementHtml, keyToUrl));
         const initialVertical = resolveVertical(useSettingsStore.getState().writingMode, parsed.vertical);
         verticalRef.current = initialVertical;
@@ -427,7 +414,7 @@ export function ReaderView() {
         setVertical(initialVertical);
         setFixedLayout(!!parsed.fixedLayout);
         setSections(parsed.sections || []);
-        setParseToken((t) => t + 1); // hand off to the render effect
+        setParseToken((t) => t + 1); // hand off to render effect
       } catch (err) {
         console.error("Failed to open book", err);
         if (!cancelled) setStatus("error");
@@ -442,15 +429,15 @@ export function ReaderView() {
     };
   }, [book]);
 
-  // --- Render: (re)build the shadow content for the current mode. ------------
-  // Runs when parsed content becomes ready and whenever the reading mode toggles
-  // — never re-parsing, only re-laying-out, carrying the character position.
+  // --- Render: (re)build the shadow content for the current mode. ---
+  // Runs when parsed content is ready and when reading mode toggles — never
+  // re-parsing, only re-laying-out, carrying the character position.
   useEffect(() => {
     const parsed = parsedRef.current;
     if (!parsed) return;
 
-    // Fixed-layout renders through <FixedLayoutView>, which owns its own shadow
-    // DOM and navigation. Nothing to build here — just mark it ready.
+    // Fixed-layout renders through <FixedLayoutView>, which owns its shadow DOM and
+    // navigation. Nothing to build here — just mark ready.
     if (parsed.fixedLayout) {
       modeRef.current = "fixed";
       readyRef.current = true;
@@ -483,8 +470,8 @@ export function ReaderView() {
 
       const temp = document.createElement("div");
       temp.innerHTML = html;
-      // Mixed books: merge paired fixed-layout image pages into one spread
-      // section so the controller renders them side by side on a single page.
+      // Mixed books: merge paired fixed-layout image pages into one spread section
+      // so the controller renders them side by side.
       mergeSpreadSections(temp, parsed.spreadPairs, parsed.ppd);
       const sectionEls = Array.from(temp.children);
 
@@ -537,13 +524,12 @@ export function ReaderView() {
       controllerRef.current = null;
       if (shadow) shadow.innerHTML = "";
     };
-    // Content arrives via parseToken + the refs above; the omitted callbacks are
-    // stable, so re-running on them would only re-layout. writingMode is here so
-    // toggling text direction rebuilds the shadow content (position is char-based,
-    // so it's preserved across the rebuild via charRef).
+    // Content arrives via parseToken + the refs above; omitted callbacks are stable.
+    // writingMode is here so toggling text direction rebuilds the shadow content
+    // (position preserved across rebuild via charRef).
   }, [parseToken, readingMode, writingMode]);
 
-  // Apply font/theme settings live, and re-flow to keep the reading position.
+  // Apply font/theme settings live; re-flow to keep the reading position.
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
@@ -551,8 +537,7 @@ export function ReaderView() {
     applyFuriganaClass(host.shadowRoot?.querySelector(".aozora-content"));
     if (!readyRef.current) return;
     if (modeRef.current === "paginated") {
-      // Column count change re-flows the multi-column layout; refresh re-measures
-      // and lands back on the current character.
+      // Column count change re-flows; refresh re-measures and lands on the current char.
       if (controllerRef.current) controllerRef.current.columns = pageColumns;
       controllerRef.current?.refresh();
       return;
@@ -561,7 +546,7 @@ export function ReaderView() {
     return () => cancelAnimationFrame(id);
   }, [fontSize, lineHeight, fontFamily, theme, furiganaMode, pageColumns, sideMargin, customFonts, restoreContinuous]);
 
-  // Page-flip helpers (forward = toward the end of the book, regardless of mode).
+  // Page-flip helpers (forward = toward end of book).
   const flipNext = useCallback(() => {
     controllerRef.current?.flipPage(1);
   }, []);
@@ -569,12 +554,11 @@ export function ReaderView() {
     controllerRef.current?.flipPage(-1);
   }, []);
 
-  // Keyboard navigation for the page-flip reader. The fixed-layout viewer owns
-  // its own key handling, so the reflowable handler stands down for manga.
+  // Keyboard nav for the page-flip reader. Manga owns its own key handling, so this stands down there.
   useEffect(() => {
     if (fixedLayout || readingMode !== "paginated") return;
     const onKey = (e: KeyboardEvent) => {
-      if (panelOpenRef.current) return; // a panel/gallery is open — don't flip pages behind it
+      if (panelOpenRef.current) return; // panel/gallery open — don't flip behind it
       if (e.altKey || e.ctrlKey || e.metaKey || e.repeat) return;
       const vert = verticalRef.current;
       switch (e.code) {
@@ -609,13 +593,12 @@ export function ReaderView() {
     return () => window.removeEventListener("keydown", onKey);
   }, [fixedLayout, readingMode, flipNext, flipPrev]);
 
-  // Recompute the continuous character offset at the viewport centre
-  // (rAF-throttled) and debounce a save.
+  // Recompute the continuous char offset at viewport centre (rAF-throttled) and debounce a save.
   const handleScroll = () => {
     if (modeRef.current !== "continuous") return;
     setFootnote(null);
-    clearAnnoTrigger(); // the pending selection scrolled away
-    closeAnnoPopover(); // its anchored selection scrolled away (no-op if none open)
+    clearAnnoTrigger(); // pending selection scrolled away
+    closeAnnoPopover(); // anchored selection scrolled away (no-op if none)
     if (rafRef.current) return;
     rafRef.current = requestAnimationFrame(() => {
       rafRef.current = 0;
@@ -629,8 +612,8 @@ export function ReaderView() {
     });
   };
 
-  // Wheel: continuous maps vertical wheel onto the horizontal axis for tategaki;
-  // paginated flips one page per (throttled) wheel notch.
+  // Wheel: continuous maps deltaY onto the horizontal axis for tategaki; paginated
+  // flips one page per (throttled) notch.
   const handleWheel = (e: React.WheelEvent) => {
     if (modeRef.current === "paginated") {
       const delta = e.deltaY || e.deltaX;
@@ -670,15 +653,14 @@ export function ReaderView() {
     }
   };
 
-  // Follow internal links in either mode. No click-to-flip (wheel/arrows only),
-  // so text stays freely selectable.
+  // Follow internal links in either mode. No click-to-flip, so text stays selectable.
   const handleContentClick = (e: React.MouseEvent) => {
     const path = (e.nativeEvent.composedPath?.() || []) as Element[];
     const anchor = path.find((n) => n?.tagName === "A");
     const href = anchor?.getAttribute("href");
     if (href && href[0] === "#") {
       const id = decodeURIComponent(href.slice(1));
-      // A noteref opens the note in a popup instead of jumping away from the prose.
+      // A noteref opens the note in a popup instead of jumping away.
       const note = footnotesRef.current.get(id);
       if (note && anchor) {
         e.preventDefault();
@@ -693,18 +675,18 @@ export function ReaderView() {
       return;
     }
 
-    // Not a link: hand off to the highlights hook, which opens the editor if the
-    // click landed on an existing highlight (and no selection is active).
+    // Not a link: hand off to the highlights hook (opens the editor if the click
+    // landed on an existing highlight and no selection is active).
     openHighlightAtPoint(e);
   };
 
-  // A content rebuild or mode switch invalidates the open note anchor box.
+  // A content rebuild or mode switch invalidates the open note's anchor box.
   useEffect(() => {
     setFootnote(null);
   }, [parseToken, readingMode]);
 
-  // F11 toggles fullscreen. Leaving the reader drops it so the user can't get
-  // stuck with the title bar hidden on a page that has no toggle.
+  // F11 toggles fullscreen. Leaving the reader drops it so the user isn't stuck with
+  // the title bar hidden on a page that has no toggle.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "F11") {
@@ -818,9 +800,9 @@ export function ReaderView() {
             onMouseUp={handleMouseUp}
             className={
               paged
-                ? // Padding lives on the host (outside the shadow scroller) so it
-                  // never disturbs the page-flip arithmetic; the scroller measures
-                  // its own client box, so columns inset to match.
+                ? // Padding on the host (outside the shadow scroller) so it never
+                  // disturbs page-flip arithmetic; the scroller measures its own
+                  // client box, so columns inset to match.
                   "h-full w-full overflow-hidden py-8 px-8"
                 : vertical
                   ? "h-full w-full overflow-x-auto overflow-y-hidden"

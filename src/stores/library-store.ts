@@ -26,18 +26,15 @@ interface LibraryState {
   applyProgress: (id: string, fields: ProgressUpdate) => void;
 }
 
-/**
- * Mirrors the IndexedDB library (source of truth: `platform/library`). Replaces
- * the desktop app's `window.electronAPI.library` IPC + SQLite; EPUB metadata is
- * parsed inside `importFile`, and imported epub blobs live in IndexedDB.
- */
+/** Mirrors the IndexedDB library (source of truth: `platform/library`);
+ *  replaces the desktop app's electron IPC + SQLite. */
 export const useLibraryStore = create<LibraryState>((set, get) => ({
   books: [],
   loading: true,
   importing: false,
   importProgress: null,
 
-  /** Loads the full library from IndexedDB. */
+  /** Loads the library from IndexedDB. */
   loadBooks: async () => {
     set({ loading: true });
     try {
@@ -49,10 +46,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     }
   },
 
-  /**
-   * Imports the given .epub files (from a file picker or drag-drop), storing each
-   * blob + record in IndexedDB, then refreshes the list. Non-.epub files are skipped.
-   */
+  /** Imports .epub files into IndexedDB, then refreshes. Non-.epub skipped. */
   importFiles: async (fileList) => {
     const files = Array.from(fileList).filter((f) => f.name.toLowerCase().endsWith(".epub"));
     if (!files.length) return { added: 0, failed: [] };
@@ -81,7 +75,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     return { added, failed };
   },
 
-  /** Toggles a book's favorite flag optimistically; reverts on failure. */
+  /** Toggles favorite optimistically; reverts on failure. */
   toggleFavorite: async (id) => {
     const book = get().books.find((b) => b.id === id);
     if (!book) return;
@@ -95,13 +89,13 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     }
   },
 
-  /** Removes a book (record + imported blob + cached content), then refreshes. */
+  /** Removes a book (record + blob + cached content). */
   removeBook: async (id) => {
     await library.removeBook(id);
     set({ books: get().books.filter((b) => b.id !== id) });
   },
 
-  /** Updates editable metadata (title/author/cover); merges the returned record back in. */
+  /** Updates editable metadata (title/author/cover). */
   updateBook: async (id, patch) => {
     const updated = await library.updateBook({ id, ...patch });
     if (updated) {
@@ -110,11 +104,8 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     return updated;
   },
 
-  /**
-   * Marks a book finished/unread. Status is derived from `progress`, so this just
-   * writes progress (1 = finished, 0 = unread) plus the matching char offset
-   * through the normal save-progress path.
-   */
+  /** Marks finished/unread. Status derives from `progress`, so just write
+   *  progress (1 = finished, 0 = unread) + matching char offset. */
   setFinished: async (id, finished) => {
     const book = get().books.find((b) => b.id === id);
     if (!book) return;
@@ -126,10 +117,8 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     await library.saveProgress(id, fields).catch(() => {});
   },
 
-  /**
-   * Merges progress fields into the in-memory record so the library grid reflects
-   * the latest position without a reload; the reader persists the same fields.
-   */
+  /** Merges progress into the in-memory record so the grid updates without a
+   *  reload; the reader persists the same fields. */
   applyProgress: (id, fields) => {
     set({ books: get().books.map((b) => (b.id === id ? { ...b, ...fields } : b)) });
   },

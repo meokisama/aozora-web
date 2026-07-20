@@ -1,18 +1,17 @@
 /**
- * Where a library book's bytes come from:
- * - `host`: served by the ranobe-hub host, fetched over HTTP via `?book=` +
- *   token (only metadata + progress are stored locally, never the epub).
- * - `local`: imported from the user's machine; the epub blob lives in IndexedDB.
+ * Where a book's bytes come from:
+ * - `host`: fetched over HTTP via `?book=` + token; only metadata/progress stored locally.
+ * - `local`: imported by the user; epub blob lives in IndexedDB.
  */
 export type BookSource = "host" | "local";
 
-/** The book shape the reader consumes. `WebBook` (platform/types) extends it. */
+/** Book shape the reader consumes; `WebBook` (platform/types) extends it. */
 export interface Book {
   id: string;
   title: string;
   author: string | null;
   language: string | null;
-  /** For host books, the `?book=` name/URL; for local books, unused (""). */
+  /** Host books: the `?book=` name/URL. Local books: unused (""). */
   filePath: string;
   coverPath: string | null;
   fileSize: number | null;
@@ -23,7 +22,7 @@ export interface Book {
   charCount: number;
   favorite: boolean;
   coverDataUrl?: string | null;
-  /** Defaults to "host" for records written before the field existed. */
+  /** Defaults to "host" for records predating this field. */
   source?: BookSource;
 }
 
@@ -34,7 +33,7 @@ export interface UpdateBookPayload {
   coverDataUrl?: string | null;
 }
 
-/** Partial reading-progress update; only provided fields are persisted. */
+/** Partial progress update; only provided fields are persisted. */
 export interface ProgressUpdate {
   progress?: number;
   exploredCharCount?: number;
@@ -52,12 +51,9 @@ export interface Bookmark {
 }
 
 /**
- * A highlighted (and optionally annotated) span of a book. Anchored by the same
- * character-offset model as reading position/bookmarks — `startChar`/`endChar`
- * survive re-flow and mode switches, so the wash is re-painted from them (via the
- * CSS Custom Highlight API) rather than stored as fragile DOM ranges. `color` is
- * one of the reader's palette keys (see `lib/reader/annotations`); `snippet` is
- * the selected text kept for the management list; `note` is the user's comment.
+ * A highlighted (optionally annotated) span. Anchored by char offsets so it
+ * survives re-flow/mode switches and is re-painted via the CSS Custom Highlight
+ * API rather than stored as fragile DOM ranges. `color` is a reader palette key.
  */
 export interface Annotation {
   id: string;
@@ -88,7 +84,7 @@ export interface AddAnnotationPayload {
   progress: number;
 }
 
-/** Partial annotation update; only provided fields are persisted. */
+/** Partial annotation update; only provided fields persisted. */
 export interface UpdateAnnotationPayload {
   id: string;
   color?: string;
@@ -97,7 +93,7 @@ export interface UpdateAnnotationPayload {
 
 // --- Reading stats. ---------------------------------------------------------
 
-/** One completed reading session, recorded by the reader. */
+/** One completed reading session. */
 export interface ReadingSession {
   bookId: string | null;
   startedAt: number;

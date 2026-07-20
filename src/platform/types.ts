@@ -1,17 +1,11 @@
 import type { Book } from "@/lib/types";
 
-/**
- * A book opened by the embed reader. Extends the shared `Book` shape (so the
- * reader consumes it unchanged) with the plaintext `.epub` URL to fetch and an
- * optional bearer token sent as `X-Reader-Token`. `filePath`/`coverPath` from
- * the desktop `Book` are unused here.
- */
+/** A book opened by the embed reader — the shared `Book` plus fetch URL and optional token/key. */
 export interface WebBook extends Book {
   /** The `.epub` URL to fetch. */
   url: string;
   /** Optional bearer token sent as the `X-Reader-Token` header. */
   token?: string;
-  /** Optional base64 AES-256-GCM key to decrypt the host-served (encrypted)
-   *  epub. Absent for absolute/external URLs, which are fetched as plaintext. */
+  /** Base64 AES-256-GCM key for host-served epubs; absent for plaintext external URLs. */
   key?: string;
 }

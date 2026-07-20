@@ -1,7 +1,6 @@
 /**
- * Pure derivation over the main process's per-day/-hour/-book SQL sums:
- * streaks, the GitHub-style heatmap grid, intensity bucketing and formatting.
- * Day keys are local-calendar 'YYYY-MM-DD', matching SQLite date(…,'localtime').
+ * Pure derivations over per-day/-hour/-book sums: streaks, heatmap grid,
+ * intensity bucketing, formatting. Day keys are local-calendar 'YYYY-MM-DD'.
  */
 
 export interface DayValue {
@@ -19,7 +18,7 @@ export interface HeatmapCell {
   books: number;
 }
 
-/** Formats a Date as a local-calendar 'YYYY-MM-DD' key. */
+/** Local-calendar 'YYYY-MM-DD' key for a Date. */
 export function toDayKey(date: Date): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -34,10 +33,8 @@ export function shiftDay(key: string, delta: number): string {
 }
 
 /**
- * Current and longest run of consecutive active days.
- * - `longest`: the longest consecutive span anywhere in the history.
- * - `current`: the run ending today, or ending yesterday if today is idle
- *   (so the streak doesn't read as broken until a full day is missed).
+ * Current and longest runs of consecutive active days. `current` ends today, or
+ * yesterday if today is idle (so it doesn't break until a full day is missed).
  */
 export function computeStreaks(activeDays: Iterable<string>, todayKey: string): { current: number; longest: number } {
   const set = activeDays instanceof Set ? (activeDays as Set<string>) : new Set(activeDays);
@@ -66,9 +63,8 @@ export function computeStreaks(activeDays: Iterable<string>, todayKey: string): 
 }
 
 /**
- * GitHub-style calendar grid: week columns, each 7 cells indexed by weekday
- * (0 = Sunday … 6 = Saturday). Out-of-year pad cells are `null`; in-year cells
- * carry the day key merged with `valueByDay` (or zeros).
+ * GitHub-style calendar grid: week columns of 7 cells by weekday (0=Sun…6=Sat).
+ * Out-of-year pad cells are `null`; in-year cells carry the day key + values.
  */
 export function buildHeatmapWeeks(year: number, valueByDay: Map<string, DayValue> | Record<string, DayValue>): (HeatmapCell | null)[][] {
   const map = valueByDay instanceof Map ? valueByDay : new Map(Object.entries(valueByDay || {}));
@@ -116,10 +112,7 @@ export function formatDuration(ms: number): string {
   return `${s}s`;
 }
 
-/**
- * Milestone progress for one metric: which thresholds are reached and the next
- * unmet one. `thresholds` must be ascending. Used for the achievement badges.
- */
+/** Milestone progress for a metric: reached thresholds + next unmet. `thresholds` ascending. */
 export function tierStatus(
   value: number,
   thresholds: number[],

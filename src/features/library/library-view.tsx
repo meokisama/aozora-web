@@ -19,8 +19,8 @@ import type { Book } from "@/lib/types";
 
 const STATUS_TABS = ["all", "reading", "finished", "unread"];
 
-// Cover size → grid column min-width and "Continue reading" shelf card width.
-// Full literal class strings so Tailwind's JIT picks them up (no interpolation).
+// Cover size → grid column min-width and shelf card width.
+// Full literal class strings so Tailwind's JIT keeps them (no interpolation).
 const GRID_COLS: Record<CardSize, string> = {
   small: "grid-cols-[repeat(auto-fill,minmax(110px,1fr))]",
   medium: "grid-cols-[repeat(auto-fill,minmax(140px,1fr))]",
@@ -32,11 +32,7 @@ const SHELF_W: Record<CardSize, string> = {
   large: "w-44",
 };
 
-/**
- * Normalizes a string for search matching: NFKC-folds half/full-width forms
- * (so 半角ｶﾅ ↔ 全角カナ and ＡＢＣ ↔ ABC match) and strips ALL whitespace,
- * including the full-width ideographic space U+3000 — JS `\s` covers it.
- */
+/** Normalize for search: NFKC-fold half/full-width forms and strip all whitespace (incl. U+3000). */
 function normalizeSearch(str: string | null | undefined) {
   return (str ?? "").normalize("NFKC").replace(/\s+/g, "").toLowerCase();
 }
@@ -65,18 +61,14 @@ function sortBooks(list: Book[], sort: SortKey) {
   return arr;
 }
 
-/** The progress-aware "Importing…" line, shared by the toast and the button label. */
+/** Progress-aware "Importing…" line, shared by toast and button label. */
 function importingLabel(t: TFunction, progress: { current: number; total: number } | null): string {
   return progress && progress.total > 1
     ? t("library.importingProgress", { current: progress.current, total: progress.total })
     : t("library.importing");
 }
 
-/**
- * The library home: a left sidebar (status nav / authors / progress / import)
- * beside a main column with a toolbar (search / sort / view), a "Continue
- * reading" shelf and the full grid (or list) of imported books.
- */
+/** The library home: toolbar (search / sort / view), "Continue reading" shelf, and book grid/list. */
 export function LibraryView() {
   const { t } = useTranslation();
   const books = useLibraryStore((s) => s.books);
@@ -99,12 +91,10 @@ export function LibraryView() {
 
   const [search, setSearch] = useState("");
 
-  // Hidden picker driving the "Import EPUB" button — replaces the desktop
-  // native file dialog.
+  // Hidden picker driving the "Import EPUB" button.
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // dragenter/dragleave fire for every child element, so track depth with a
-  // counter to know when the cursor has truly left the drop zone.
+  // dragenter/dragleave fire per child; count depth to know when the cursor truly left.
   const [dragging, setDragging] = useState(false);
   const dragDepth = useRef(0);
 
@@ -112,7 +102,7 @@ export function LibraryView() {
     loadBooks().catch(() => toast.error(t("library.failedToLoad")));
   }, [loadBooks]);
 
-  // Books matching the active status tab + author + search box, then sorted.
+  // Books matching status tab + author + search, then sorted.
   const visibleBooks = useMemo(() => {
     const q = normalizeSearch(search);
     const filtered = books.filter((b) => {
@@ -128,8 +118,8 @@ export function LibraryView() {
     return sortBooks(filtered, sort);
   }, [books, statusFilter, authorFilter, search, sort]);
 
-  // "Continue reading" shelf: up to 10 most-recently-read in-progress books.
-  // Only on the unfiltered "All" view so it never duplicates the grid below.
+  // "Continue reading" shelf: up to 10 most-recent in-progress books.
+  // Only on the unfiltered "All" view so it never duplicates the grid.
   const continueReading = useMemo(() => {
     if (statusFilter !== "all" || authorFilter || search.trim()) return [];
     return books
@@ -138,8 +128,8 @@ export function LibraryView() {
       .slice(0, 10);
   }, [books, statusFilter, authorFilter, search]);
 
-  // One sticky toast tracking import progress, dismissed when the run ends
-  // (final result toast comes from reportImport). Reusing the id updates it in place.
+  // One sticky toast tracking import progress; reusing the id updates it in place.
+  // Dismissed when the run ends (final result toast comes from reportImport).
   const importToastId = useRef<string | number | null>(null);
   useEffect(() => {
     if (importing) {
@@ -155,8 +145,7 @@ export function LibraryView() {
     if (failed.length) toast.error(t("library.couldNotImport", { names: failed.join(", ") }));
   };
 
-  // Open a stored book: resolve it to a reader-ready WebBook (host token/URL or
-  // local blob) before handing it to the reader.
+  // Resolve a stored book to a reader-ready WebBook before opening it.
   const handleOpen = async (book: Book) => {
     try {
       useReaderStore.getState().open(await openLibraryBook(book));
@@ -165,13 +154,11 @@ export function LibraryView() {
     }
   };
 
-  // "Import EPUB" button → open the hidden picker.
   const handleImport = () => fileInputRef.current?.click();
 
   const handleFilesPicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Snapshot the picked files BEFORE clearing the input: `e.target.files` is a
-    // live FileList, so resetting `value` (to allow re-picking the same file)
-    // would empty it and leave nothing to import.
+    // Snapshot files BEFORE clearing input: `files` is live, so resetting `value`
+    // (needed to allow re-picking the same file) would empty it.
     const files = e.target.files ? Array.from(e.target.files) : [];
     e.target.value = "";
     if (!files.length) return;

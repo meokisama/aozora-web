@@ -6,12 +6,7 @@ import dicShot from "@/assets/dic-shot.png";
 /** Where to get the Yomitan browser extension this web edition relies on. */
 const YOMITAN_URL = "https://yomitan.wiki/";
 
-/**
- * Dictionary page: a UI-only showcase. It explains that the original desktop
- * Aozora bundles a Yomitan-compatible pop-up dictionary, while this web edition
- * has no dictionary of its own and instead works directly with the Yomitan
- * browser extension. Nothing here is interactive beyond the "get Yomitan" link.
- */
+/** Dictionary page: UI-only showcase. Web edition has no built-in dictionary; points users to the Yomitan extension. */
 export function DictionaryView() {
   const { t } = useTranslation();
   return (
@@ -23,12 +18,7 @@ export function DictionaryView() {
         </header>
 
         <figure className="w-full space-y-2">
-          <img
-            src={dicShot}
-            alt={t("dictionary.shotCaption")}
-            className="w-full rounded-md border object-contain shadow-sm"
-            draggable={false}
-          />
+          <img src={dicShot} alt={t("dictionary.shotCaption")} className="w-full rounded-md border object-contain shadow-sm" draggable={false} />
           <figcaption className="text-[11px] text-muted-foreground">{t("dictionary.shotCaption")}</figcaption>
         </figure>
 

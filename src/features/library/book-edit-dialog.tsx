@@ -10,11 +10,7 @@ import { useLibraryStore } from "@/stores/library-store";
 import { resizeCoverToDataUrl } from "@/lib/epub/resize-cover";
 import type { Book } from "@/lib/types";
 
-/**
- * Edit a book's title, author and cover. The chosen cover is downscaled to a
- * crisp thumbnail data URL in the browser (see resize-cover) and handed to the
- * store (`updateBook`) — no native/main-process round-trip.
- */
+/** Edit a book's title, author and cover. Cover is downscaled client-side (see resize-cover). */
 export function BookEditDialog({ book, open, onOpenChange }: { book: Book; open: boolean; onOpenChange: (open: boolean) => void }) {
   const { t } = useTranslation();
   const updateBook = useLibraryStore((s) => s.updateBook);
@@ -24,7 +20,7 @@ export function BookEditDialog({ book, open, onOpenChange }: { book: Book; open:
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Reset the form each time the dialog opens — the instance is reused across edits.
+  // Reset form on open — the instance is reused across edits.
   useEffect(() => {
     if (open) {
       setTitle(book.title);

@@ -4,8 +4,7 @@ import LanguageDetector from "i18next-browser-languagedetector";
 import en from "./en.json";
 import vi from "./vi.json";
 
-/** Selectable UI locales. English is the default/fallback; Vietnamese is the
- *  second locale. Order drives the Settings language selector. */
+/** UI locales; order drives the Settings selector. English is the default/fallback. */
 export const LOCALES = [
   { value: "en", label: "English" },
   { value: "vi", label: "Tiếng Việt" },
@@ -26,16 +25,11 @@ void i18n
     },
     fallbackLng: "en",
     supportedLngs: ["en", "vi"],
-    // Collapse regional tags (vi-VN, en-US…) to the base language so detection
-    // of a Vietnamese browser lands on `vi` and everything else on `en`.
+    // Collapse regional tags (vi-VN → vi) so detection lands on a base language.
     load: "languageOnly",
     detection: {
-      // Priority: a manual choice persisted to localStorage always wins; then a
-      // `?lang=` hint from the ranobe-hub embed (its server knows the visitor's
-      // locale via GeoIP/account — the reliable signal a client-only SPA can't
-      // compute itself); then the browser's navigator.languages; then `en`.
-      // The resolved language is cached to localStorage, so the embed hint only
-      // decides the FIRST visit and a later in-app switch sticks.
+      // Priority: persisted choice > embed `?lang=` hint > browser > en. Result is
+      // cached, so the hint only decides the first visit and later switches stick.
       order: ["localStorage", "querystring", "navigator"],
       lookupLocalStorage: LANGUAGE_STORAGE_KEY,
       lookupQuerystring: "lang",

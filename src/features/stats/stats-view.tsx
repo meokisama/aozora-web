@@ -15,11 +15,7 @@ import { StatCard, BarChart } from "./stats-widgets";
 import { GoalCard } from "./goal-card";
 import { Milestones } from "./milestones";
 
-/**
- * The reading-statistics page. Aggregation runs in IndexedDB (platform/stats);
- * this component fetches it, derives streaks / heatmap geometry, and lays out the
- * (mostly presentational) section components.
- */
+/** The reading-statistics page. Fetches aggregates (platform/stats), derives streaks/geometry, lays out sections. */
 export function StatsView() {
   const { t } = useTranslation();
   const books = useLibraryStore((s) => s.books);
@@ -65,14 +61,14 @@ export function StatsView() {
     [daily, todayKey],
   );
 
-  // Years present in the data, newest first; the current year is always offered.
+  // Years present in the data, newest first; current year always offered.
   const years = useMemo(() => {
     const set = new Set([new Date().getFullYear()]);
     for (const d of daily) set.add(Number(d.day.slice(0, 4)));
     return [...set].sort((a, b) => b - a);
   }, [daily]);
 
-  // Last 30 days, gaps filled with zero, for the daily-rhythm chart.
+  // Last 30 days, gaps zero-filled, for the daily-rhythm chart.
   const trend = useMemo(() => {
     const arr = [];
     for (let i = 29; i >= 0; i -= 1) {
@@ -98,8 +94,7 @@ export function StatsView() {
     return buckets.map((b) => ({ ...b, tip: t("stats.barTooltip", { key: `${String(b.key).padStart(2, "0")}:00`, chars: formatCompact(b.chars), dur: formatDuration(b.ms) }) }));
   }, [data, metric, t]);
 
-  // Join each per-book stat to its library Book; drop stats whose book is gone
-  // so we only render real covers.
+  // Join per-book stats to library Books; drop stats whose book is gone.
   const booksById = useMemo(() => new Map(books.map((b) => [b.id, b])), [books]);
   const topBooks = useMemo(
     () =>
@@ -118,8 +113,7 @@ export function StatsView() {
   const hasData = overview.sessionCount > 0;
   const selected = selectedDay ? valueByDay.get(selectedDay) : null;
 
-  // Daily goal: today's characters vs the target, plus the run of consecutive
-  // goal-meeting days (reuses the streak calc over the days that met the goal).
+  // Daily goal: today's chars vs target, plus streak over days that met the goal.
   const todayChars = valueByDay.get(todayKey)?.chars || 0;
   const goalPct = dailyGoal > 0 ? todayChars / dailyGoal : 0;
   const goalStreak = useMemo(() => {

@@ -38,10 +38,7 @@ interface BookActionsState {
   handleRemove: () => Promise<void>;
 }
 
-/**
- * Shared state + handlers for the book actions, surfaced as both a right-click
- * context menu and a dropdown. Owning the dialogs here keeps the two menus in sync.
- */
+/** Shared state + handlers for the book actions, used by both the context menu and dropdown. */
 function useBookActions(book: Book): BookActionsState {
   const { t } = useTranslation();
   const removeBook = useLibraryStore((s) => s.removeBook);
@@ -70,8 +67,7 @@ function useBookActions(book: Book): BookActionsState {
       .catch(() => toast.error(t("library.actions.favoriteFailed")));
   };
 
-  // Descriptors shared by both menus; falsy entries are filtered so the mark
-  // items only show when they'd actually change state.
+  // Falsy entries filtered out so mark items only show when they'd change state.
   const items = [
     { key: "edit", label: t("library.actions.editDetails"), icon: Pencil, onSelect: () => setEditOpen(true) },
     book.favorite
@@ -115,8 +111,7 @@ export function BookContextMenu({ book, children }: { book: Book; children: Reac
 
   return (
     <>
-      {/* modal={false}: opening a dialog from a menu item otherwise collides
-          with the menu's body pointer-events lock. */}
+      {/* modal={false}: avoids collision between dialog and menu's pointer-events lock. */}
       <ContextMenu modal={false}>
         <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
         <ContextMenuContent className="w-44">
@@ -138,10 +133,7 @@ export function BookContextMenu({ book, children }: { book: Book; children: Reac
   );
 }
 
-/**
- * The same actions as a dropdown, for the hover "⋯" button on cards/rows.
- * `trigger` is the element that opens it (rendered via asChild).
- */
+/** Same actions as a dropdown, for the hover "⋯" button. `trigger` opens it (via asChild). */
 export function BookActionsMenu({ book, trigger }: { book: Book; trigger: React.ReactNode }) {
   const state = useBookActions(book);
 
